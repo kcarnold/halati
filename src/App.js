@@ -251,7 +251,7 @@ function simplifyRanges(text, ranges) {
   var newRanges = [], offset = 0;
   annotated.forEach(({text, style}) => {
     if (style.marked) {
-      if (newRanges.length && newRanges[newRanges.length - 1][1] == offset) {
+      if (newRanges.length && newRanges[newRanges.length - 1][1] === offset) {
         // extend the existing range
         newRanges[newRanges.length - 1][1] = offset + text.length;
       } else {
