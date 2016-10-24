@@ -198,15 +198,6 @@ const Sidebar = observer(class Sidebar extends Component {
   render() {
     let {activeTopic, topics, curTextIdx} = this.props;
     return <div>
-      <div className="sidebarGroup">
-        <div>Overall questions:</div>
-        {annotationsStore.questions.map((question, i) => <div key={question.id}>
-          <label title={question.instructions}>{question.text + " "}
-            <i className="fa fa-info-circle" title={question.instructions} /><br/>
-            <input onChange={evt => {question.responses[curTextIdx] = +evt.target.value}} type="number" min={question.min} max={question.max} value={question.responses[curTextIdx] || ""} />
-          </label></div>)}
-      </div>
-
       <div>Topics:</div>
       {topics.map((topic, i) => <SidebarTopic
       key={i}
@@ -290,22 +281,30 @@ const App = observer(class App extends Component {
   }
 
   render() {
+    let {curTextIdx} = uistate;
     if (annotationsStore.texts.length === 0) {
       return <RequestDatafile />;
     }
     return (
       <div className="container">
-
         <div>
           <button onClick={() => {uistate.curTextIdx = uistate.curTextIdx - 1}} disabled={uistate.curTextIdx === 0}>&lt;</button>
           Text {uistate.curTextIdx + 1} of {annotationsStore.texts.length}
           <button onClick={() => {uistate.curTextIdx = uistate.curTextIdx + 1}} disabled={uistate.curTextIdx === annotationsStore.texts.length - 1}>&gt;</button>
         </div>
         <div className="row">
-          <div className="col-md-9" id="text" onMouseUp={this.onMouseUp}><MainText />
+          <div className="col-md-6" id="text" onMouseUp={this.onMouseUp}><MainText />
           </div>
           <div className="col-md-3" id="sidebar">
             <Sidebar topics={annotationsStore.topics} activeTopic={uistate.activeTopic} curTextIdx={uistate.curTextIdx} />
+          </div>
+          <div className="col-md-3">
+            <div>Overall questions:</div>
+            {annotationsStore.questions.map((question, i) => <div key={question.id}>
+              <label title={question.instructions}>{question.text + " "}
+                <i className="fa fa-info-circle" title={question.instructions} /><br/>
+                <input onChange={evt => {question.responses[curTextIdx] = +evt.target.value}} type="number" min={question.min} max={question.max} value={question.responses[curTextIdx] || ""} />
+              </label></div>)}
           </div>
         </div>
         <textarea id="results" readOnly="readOnly" value={JSON.stringify(annotationsStore.toJson())} />
