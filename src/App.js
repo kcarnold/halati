@@ -33,26 +33,27 @@ class Question {
 class AnnotationStore {
   constructor() {
     extendObservable(this, {
-      reviews: [],
+      texts: [],
       topics: [],
       questions: [],
       lastColorIdx: 0,
-      setReviews: action(function(reviews) {
-        this.reviews = reviews;
+      setTexts: action(function(texts) {
+        this.texts = texts;
         this.topics.forEach(topic => {
-          topic.ranges = makeEmptyRanges(reviews.length);
+          topic.ranges = makeEmptyRanges(texts.length);
         });
         this.questions.forEach(question => {
-          question.responses = Array(reviews.length);
+          question.responses = Array(texts.length);
         });
       })
     });
   };
 
   fromJson(json) {
-    this.reviews = json.reviews;
+    this.texts = json.texts;
     this.topics = json.topics;
     this.questions = json.questions;
+    this.lastColorIdx = json.lastColorIdx
   };
 
   toJson() {
@@ -72,15 +73,15 @@ if (window.localStorage.annotations){
   annotationsStore.fromJson(JSON.parse(window.localStorage.annotations));
 } else {
   annotationsStore.questions = [new Question('quality', 'Overall quality')];
-  annotationsStore.setReviews(["never had korean chicken before but this was good in comparison to our homeland version. crispy and tender chicken that was not too greasy. we also ordered topoki, a saucy plate of some chewy doughy stuff, similar to the texture of mochi. \n\nthe lack of stars were due to the long wait (made to order), the cramped space, and the not being able to get more than one itsy container of sauce. let's get it straight - it's bbq sauce, not michael jackson's sweat.", "review 2"]);
+  annotationsStore.setTexts(["never had korean chicken before but this was good in comparison to our homeland version. crispy and tender chicken that was not too greasy. we also ordered topoki, a saucy plate of some chewy doughy stuff, similar to the texture of mochi. \n\nthe lack of stars were due to the long wait (made to order), the cramped space, and the not being able to get more than one itsy container of sauce. let's get it straight - it's bbq sauce, not michael jackson's sweat.", "text 2"]);
 }
 
 class UiState {
   constructor(annotationsStore) {
     this.annotationsStore = annotationsStore;
     extendObservable(this, {
-      curReview: 0,
-      get curText() {return this.annotationsStore.reviews[this.curReview];},
+      curTextIdx: 0,
+      get curText() {return this.annotationsStore.texts[this.curTextIdx];},
       activeTopic: 0,
       setActiveTopic: action(function(i) {
         this.activeTopic = i;
@@ -174,7 +175,7 @@ const SidebarTopic = observer(class SidebarTopic extends Component {
   };
 
   render() {
-    let {isActive, topic, curReview} = this.props;
+    let {isActive, topic, curTextIdx} = this.props;
     return (
       <div className={"sidebarGroup " + (isActive ? "active" : "")}>
         <div
@@ -186,7 +187,7 @@ const SidebarTopic = observer(class SidebarTopic extends Component {
           <button onClick={this.handleRemove}>{FA('remove')}</button>
         </div>
       <div>
-        {topic.ranges[curReview].map(([start, end], i) => <TopicInstance
+        {topic.ranges[curTextIdx].map(([start, end], i) => <TopicInstance
           key={i}
           onRemove={() => topic.ranges.splice(i, 1)}
           text={uistate.curText.slice(start, end)} />)}
@@ -197,18 +198,18 @@ const SidebarTopic = observer(class SidebarTopic extends Component {
 
 const Sidebar = observer(class Sidebar extends Component {
   handleAddTopic = () => {
-    this.props.topics.push(new Topic(prompt("Name for this topic?"), annotationsStore.nextColor(), makeEmptyRanges(annotationsStore.reviews.length)));
+    this.props.topics.push(new Topic(prompt("Name for this topic?"), annotationsStore.nextColor(), makeEmptyRanges(annotationsStore.texts.length)));
     uistate.setActiveTopic(this.props.topics.length - 1);
   };
 
   render() {
-    let {activeTopic, topics, curReview} = this.props;
+    let {activeTopic, topics, curTextIdx} = this.props;
     return <div>
       <div className="sidebarGroup">
         <div>Overall questions:</div>
         {annotationsStore.questions.map((question, i) => <div key={question.id}>
           <label>{question.text}
-            <input onChange={evt => {question.responses[curReview] = +evt.target.value}} type="number" min="1" max="7" value={question.responses[curReview] || ""} />
+            <input onChange={evt => {question.responses[curTextIdx] = +evt.target.value}} type="number" min="1" max="7" value={question.responses[curTextIdx] || ""} />
           </label></div>)}
       </div>
 
@@ -216,7 +217,7 @@ const Sidebar = observer(class Sidebar extends Component {
       {topics.map((topic, i) => <SidebarTopic
       key={i}
       idx={i} isActive={i === activeTopic}
-      topic={topic} curReview={curReview} />)}
+      topic={topic} curTextIdx={curTextIdx} />)}
       <button onClick={this.handleAddTopic}>{FA('plus')} Add Topic</button>
 
     </div>;
@@ -232,7 +233,7 @@ const MainText = observer(class MainText extends Component {
     return <div>{
       annotationsStore.topics.map(function({name, color, ranges}, i) {
         var annotated = [{text: uistate.curText, style: {}}];
-        ranges[uistate.curReview].forEach(function([start, end]) {
+        ranges[uistate.curTextIdx].forEach(function([start, end]) {
           annotated = addFormatting(annotated, start, end, {background: color});
         });
         return <div key={i} className="hl-layer">{formattedRanges(annotated)}</div>
@@ -251,22 +252,22 @@ const App = observer(class App extends Component {
     if (uistate.activeTopic >= annotationsStore.topics.length) {
       alert("Create a topic first, then select some text.")
     }
-    annotationsStore.topics[uistate.activeTopic].ranges[uistate.curReview].push([range.startOffset, range.endOffset]);
+    annotationsStore.topics[uistate.activeTopic].ranges[uistate.curTextIdx].push([range.startOffset, range.endOffset]);
   }
 
   render() {
     return (
       <div className="App">
         <div>
-          <button onClick={() => {uistate.curReview = uistate.curReview - 1}} disabled={uistate.curReview === 0}>&lt;</button>
-          Review {uistate.curReview + 1} of {annotationsStore.reviews.length}
-          <button onClick={() => {uistate.curReview = uistate.curReview + 1}} disabled={uistate.curReview === annotationsStore.reviews.length - 1}>&gt;</button>
+          <button onClick={() => {uistate.curTextIdx = uistate.curTextIdx - 1}} disabled={uistate.curTextIdx === 0}>&lt;</button>
+          Text {uistate.curTextIdx + 1} of {annotationsStore.texts.length}
+          <button onClick={() => {uistate.curTextIdx = uistate.curTextIdx + 1}} disabled={uistate.curTextIdx === annotationsStore.texts.length - 1}>&gt;</button>
         </div>
         <div className="row">
           <div className="col-md-9" id="text" onMouseUp={this.onMouseUp}><MainText />
           </div>
           <div className="col-md-3" id="sidebar">
-            <Sidebar topics={annotationsStore.topics} activeTopic={uistate.activeTopic} curReview={uistate.curReview} />
+            <Sidebar topics={annotationsStore.topics} activeTopic={uistate.activeTopic} curTextIdx={uistate.curTextIdx} />
             <button onClick={evt => {window.localStorage.clear(); window.location.reload();}}>Reset</button>
           </div>
         </div>
