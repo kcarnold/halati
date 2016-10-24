@@ -4,7 +4,7 @@ import {observer} from 'mobx-react';
 
 var colors = ['#8dd3c7','#ffffb3','#bebada','#fb8072','#80b1d3','#fdb462','#b3de69','#fccde5','#d9d9d9','#bc80bd']; // colorbrewer set3
 
-class Region {
+class Topic {
   constructor(name, color, ranges) {
     extendObservable(this, {
       name: name,
@@ -34,16 +34,16 @@ class AnnotationStore {
   constructor() {
     extendObservable(this, {
       reviews: [],
-      regions: [],
+      topics: [],
       questions: [],
       lastColorIdx: 0,
       setReviews: action(function(reviews) {
         this.reviews = reviews;
-        this.regions.forEach(topic => {
+        this.topics.forEach(topic => {
           topic.ranges = makeEmptyRanges(reviews.length);
         });
         this.questions.forEach(question => {
-          question.responses = [];
+          question.responses = Array(reviews.length);
         });
       })
     });
@@ -51,7 +51,7 @@ class AnnotationStore {
 
   fromJson(json) {
     this.reviews = json.reviews;
-    this.regions = json.regions;
+    this.topics = json.topics;
     this.questions = json.questions;
   };
 
@@ -81,9 +81,9 @@ class UiState {
     extendObservable(this, {
       curReview: 0,
       get curText() {return this.annotationsStore.reviews[this.curReview];},
-      activeRegion: 0,
-      setActiveRegion: action(function(i) {
-        this.activeRegion = i;
+      activeTopic: 0,
+      setActiveTopic: action(function(i) {
+        this.activeTopic = i;
       })
     });
   }
@@ -156,7 +156,7 @@ const TopicInstance = observer(class TopicInstance extends Component {
 
 const SidebarTopic = observer(class SidebarTopic extends Component {
   handleClick = () => {
-    uistate.setActiveRegion(this.props.idx);
+    uistate.setActiveTopic(this.props.idx);
   };
 
   handleEditTitle = () => {
@@ -166,10 +166,10 @@ const SidebarTopic = observer(class SidebarTopic extends Component {
   };
 
   handleRemove = (evt) => {
-    if (uistate.activeRegion >= this.props.idx) {
-      uistate.setActiveRegion(uistate.activeRegion - 1);
+    if (uistate.activeTopic >= this.props.idx) {
+      uistate.setActiveTopic(uistate.activeTopic - 1);
     }
-    annotationsStore.regions.splice(this.props.idx, 1);
+    annotationsStore.topics.splice(this.props.idx, 1);
     evt.stopPropagation();
   };
 
@@ -178,7 +178,7 @@ const SidebarTopic = observer(class SidebarTopic extends Component {
     return (
       <div className={isActive ? "active" : ""}>
         <div
-          className="region"
+          className="topic"
           style={{background: topic.color}}
           onClick={this.handleClick}>
           {topic.name}
@@ -196,23 +196,23 @@ const SidebarTopic = observer(class SidebarTopic extends Component {
 });
 
 const Sidebar = observer(class Sidebar extends Component {
-  handleAddRegion = () => {
-    this.props.regions.push(new Region(prompt("Name for this topic?"), annotationsStore.nextColor(), makeEmptyRanges(annotationsStore.reviews.length)));
-    uistate.setActiveRegion(this.props.regions.length - 1);
+  handleAddTopic = () => {
+    this.props.topics.push(new Topic(prompt("Name for this topic?"), annotationsStore.nextColor(), makeEmptyRanges(annotationsStore.reviews.length)));
+    uistate.setActiveTopic(this.props.topics.length - 1);
   };
 
   render() {
-    let {activeRegion, regions, curReview} = this.props;
-    return <div>{regions.map((topic, i) => <SidebarTopic
+    let {activeTopic, topics, curReview} = this.props;
+    return <div>{topics.map((topic, i) => <SidebarTopic
       key={i}
-      idx={i} isActive={i === activeRegion}
+      idx={i} isActive={i === activeTopic}
       topic={topic} curReview={curReview} />)}
-      <button onClick={this.handleAddRegion}>{FA('plus')} Add Topic</button>
-
+      <button onClick={this.handleAddTopic}>{FA('plus')} Add Topic</button>
       {annotationsStore.questions.map((question, i) => <div key={question.id}>
         <label>{question.text}
           <input onChange={evt => {question.responses[curReview] = +evt.target.value}} type="number" min="1" max="7" value={question.responses[curReview]} />
         </label></div>)}
+
     </div>;
   }
 });
@@ -224,7 +224,7 @@ function FA(name) {
 const MainText = observer(class MainText extends Component {
   render() {
     return <div>{
-      annotationsStore.regions.map(function({name, color, ranges}, i) {
+      annotationsStore.topics.map(function({name, color, ranges}, i) {
         var annotated = [{text: uistate.curText, style: {}}];
         ranges[uistate.curReview].forEach(function([start, end]) {
           annotated = addFormatting(annotated, start, end, {background: color});
@@ -242,10 +242,10 @@ const App = observer(class App extends Component {
   onMouseUp(evt) {
     var range = window.getSelection().getRangeAt(0);
     if (range.startContainer !== range.endContainer || range.startOffset === range.endOffset) return;
-    if (uistate.activeRegion >= annotationsStore.regions.length) {
+    if (uistate.activeTopic >= annotationsStore.topics.length) {
       alert("Create a topic first, then select some text.")
     }
-    annotationsStore.regions[uistate.activeRegion].ranges[uistate.curReview].push([range.startOffset, range.endOffset]);
+    annotationsStore.topics[uistate.activeTopic].ranges[uistate.curReview].push([range.startOffset, range.endOffset]);
   }
 
   render() {
@@ -255,7 +255,7 @@ const App = observer(class App extends Component {
           <div className="col-md-9" id="text" onMouseUp={this.onMouseUp}><MainText />
           </div>
           <div className="col-md-3" id="sidebar">
-            <Sidebar regions={annotationsStore.regions} activeRegion={uistate.activeRegion} curReview={uistate.curReview} />
+            <Sidebar topics={annotationsStore.topics} activeTopic={uistate.activeTopic} curReview={uistate.curReview} />
             <button onClick={evt => {window.localStorage.clear(); window.location.reload();}}>Reset</button>
           </div>
         </div>
