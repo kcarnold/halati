@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import {extendObservable, observable, computed, action, autorun, toJS} from 'mobx';
+import {extendObservable, action, autorun, toJS} from 'mobx';
 import {observer} from 'mobx-react';
 
 var colors = ['#8dd3c7','#ffffb3','#bebada','#fb8072','#80b1d3','#fdb462','#b3de69','#fccde5','#d9d9d9','#bc80bd']; // colorbrewer set3
@@ -210,7 +210,7 @@ const Sidebar = observer(class Sidebar extends Component {
       <button onClick={this.handleAddTopic}>{FA('plus')} Add Topic</button>
       {annotationsStore.questions.map((question, i) => <div key={question.id}>
         <label>{question.text}
-          <input onChange={evt => {question.responses[curReview] = +evt.target.value}} type="number" min="1" max="7" value={question.responses[curReview]} />
+          <input onChange={evt => {question.responses[curReview] = +evt.target.value}} type="number" min="1" max="7" value={question.responses[curReview || ""]} />
         </label></div>)}
 
     </div>;
