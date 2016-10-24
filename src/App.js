@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import {extendObservable, action, autorun, toJS} from 'mobx';
+import {extendObservable, action, autorun, toJS, transaction} from 'mobx';
 import {observer} from 'mobx-react';
 
 var colors = ['#8dd3c7','#ffffb3','#bebada','#fb8072','#80b1d3','#fdb462','#b3de69','#fccde5','#d9d9d9','#bc80bd']; // colorbrewer set3
@@ -37,23 +37,19 @@ class AnnotationStore {
       topics: [],
       questions: [],
       lastColorIdx: 0,
-      setTexts: action(function(texts) {
-        this.texts = texts;
-        this.topics.forEach(topic => {
-          topic.ranges = makeEmptyRanges(texts.length);
-        });
-        this.questions.forEach(question => {
-          question.responses = Array(texts.length);
-        });
-      })
     });
   };
 
   fromJson(json) {
-    this.texts = json.texts;
-    this.topics = json.topics;
-    this.questions = json.questions;
-    this.lastColorIdx = json.lastColorIdx
+    transaction(() => {
+      this.texts = json.texts;
+      this.topics = json.topics || [];
+      this.questions = json.questions;
+      this.lastColorIdx = json.lastColorIdx || 0;
+      this.questions.forEach(question => {
+        question.responses = question.responses || Array(this.texts.length);
+      });
+    });
   };
 
   toJson() {
@@ -71,9 +67,6 @@ var annotationsStore = new AnnotationStore();
 window.annotationsStore = annotationsStore;
 if (window.localStorage.annotations){
   annotationsStore.fromJson(JSON.parse(window.localStorage.annotations));
-} else {
-  annotationsStore.questions = [new Question('quality', 'Overall quality')];
-  annotationsStore.setTexts(["never had korean chicken before but this was good in comparison to our homeland version. crispy and tender chicken that was not too greasy. we also ordered topoki, a saucy plate of some chewy doughy stuff, similar to the texture of mochi. \n\nthe lack of stars were due to the long wait (made to order), the cramped space, and the not being able to get more than one itsy container of sauce. let's get it straight - it's bbq sauce, not michael jackson's sweat.", "text 2"]);
 }
 
 class UiState {
@@ -102,7 +95,8 @@ autorun(function() {
 
 
 function formattedRanges(ranges) {
-  return ranges.map(({text, style}, i) => <span key={i} style={style}>{text}</span>);
+  var offset = 0;
+  return ranges.map(({text, style}, i) => <span key={i} style={style} data-offset={(offset += text.length) - text.length}>{text}</span>);
 }
 
 function joinStyle(a, b) { return {...a, ...b};}
@@ -189,7 +183,7 @@ const SidebarTopic = observer(class SidebarTopic extends Component {
       <div>
         {topic.ranges[curTextIdx].map(([start, end], i) => <TopicInstance
           key={i}
-          onRemove={() => topic.ranges.splice(i, 1)}
+          onRemove={() => topic.ranges[curTextIdx].splice(i, 1)}
           text={uistate.curText.slice(start, end)} />)}
       </div>
       </div>);
@@ -230,34 +224,60 @@ function FA(name) {
 
 const MainText = observer(class MainText extends Component {
   render() {
-    return <div>{
-      annotationsStore.topics.map(function({name, color, ranges}, i) {
-        var annotated = [{text: uistate.curText, style: {}}];
+    var annotated = [{text: uistate.curText, style: {}}];
+    annotationsStore.topics.forEach(function({name, color, ranges}) {
         ranges[uistate.curTextIdx].forEach(function([start, end]) {
           annotated = addFormatting(annotated, start, end, {background: color});
         });
-        return <div key={i} className="hl-layer">{formattedRanges(annotated)}</div>
-      })}
-      <div className="real-text">{uistate.curText}</div>
-    </div>;
+      });
+    return <div className="real-text">{formattedRanges(annotated)}</div>;
   }
 });
 
+
+function handleFiles(files) {
+  var file = files[0];
+  var reader = new FileReader();
+  reader.onload = evt => {
+    console.log("got data");
+    var data = JSON.parse(reader.result);
+    annotationsStore.fromJson(data);
+  };
+  reader.readAsText(file);
+}
+
+const DropTarget = observer(class DropTarget extends Component {
+  handleDrop(evt) {
+    evt.preventDefault();
+    evt.stopPropagation();
+    handleFiles(evt.dataTransfer.files);
+    return false;
+  }
+
+  render() {
+    return <div className="jumbotron" ref={elt => {this.elt = elt}} onDrop={this.handleDrop}>Drop file here... <input type="file" onChange={evt => handleFiles(evt.target.files)} /></div>
+  }
+})
 
 
 const App = observer(class App extends Component {
   onMouseUp(evt) {
     var range = window.getSelection().getRangeAt(0);
     if (range.startContainer !== range.endContainer || range.startOffset === range.endOffset) return;
+    var offset = +range.startContainer.parentNode.getAttribute('data-offset');
     if (uistate.activeTopic >= annotationsStore.topics.length) {
       alert("Create a topic first, then select some text.")
     }
-    annotationsStore.topics[uistate.activeTopic].ranges[uistate.curTextIdx].push([range.startOffset, range.endOffset]);
+    annotationsStore.topics[uistate.activeTopic].ranges[uistate.curTextIdx].push([offset + range.startOffset, offset + range.endOffset]);
   }
 
   render() {
+    if (annotationsStore.texts.length === 0) {
+      return <DropTarget />;
+    }
     return (
       <div className="App">
+
         <div>
           <button onClick={() => {uistate.curTextIdx = uistate.curTextIdx - 1}} disabled={uistate.curTextIdx === 0}>&lt;</button>
           Text {uistate.curTextIdx + 1} of {annotationsStore.texts.length}
