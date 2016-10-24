@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import {extendObservable, action, autorun, toJS, transaction} from 'mobx';
+import {extendObservable, observable, action, autorun, toJS, transaction} from 'mobx';
 import {observer} from 'mobx-react';
 
 var colors = ['#8dd3c7','#ffffb3','#bebada','#fb8072','#80b1d3','#fdb462','#b3de69','#fccde5','#d9d9d9','#bc80bd']; // colorbrewer set3
@@ -47,7 +47,7 @@ class AnnotationStore {
       this.questions = json.questions;
       this.lastColorIdx = json.lastColorIdx || 0;
       this.questions.forEach(question => {
-        question.responses = question.responses || Array(this.texts.length);
+        question.responses = question.responses || observable(Array(this.texts.length));
       });
     });
   };
