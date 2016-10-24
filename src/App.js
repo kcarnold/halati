@@ -201,8 +201,9 @@ const Sidebar = observer(class Sidebar extends Component {
       <div className="sidebarGroup">
         <div>Overall questions:</div>
         {annotationsStore.questions.map((question, i) => <div key={question.id}>
-          <label>{question.text}
-            <input onChange={evt => {question.responses[curTextIdx] = +evt.target.value}} type="number" min="1" max="7" value={question.responses[curTextIdx] || ""} />
+          <label title={question.instructions}>{question.text + " "}
+            <i className="fa fa-info-circle" title={question.instructions} /><br/>
+            <input onChange={evt => {question.responses[curTextIdx] = +evt.target.value}} type="number" min={question.min} max={question.max} value={question.responses[curTextIdx] || ""} />
           </label></div>)}
       </div>
 
@@ -293,7 +294,7 @@ const App = observer(class App extends Component {
       return <RequestDatafile />;
     }
     return (
-      <div className="App">
+      <div className="container">
 
         <div>
           <button onClick={() => {uistate.curTextIdx = uistate.curTextIdx - 1}} disabled={uistate.curTextIdx === 0}>&lt;</button>
