@@ -246,16 +246,9 @@ function handleFiles(files) {
   reader.readAsText(file);
 }
 
-const DropTarget = observer(class DropTarget extends Component {
-  handleDrop(evt) {
-    evt.preventDefault();
-    evt.stopPropagation();
-    handleFiles(evt.dataTransfer.files);
-    return false;
-  }
-
+const RequestDatafile = observer(class RequestDatafile extends Component {
   render() {
-    return <div className="jumbotron" ref={elt => {this.elt = elt}} onDrop={this.handleDrop}>Drop file here... <input type="file" onChange={evt => handleFiles(evt.target.files)} /></div>
+    return <div className="jumbotron">Select the data file: <input type="file" onChange={evt => handleFiles(evt.target.files)} /></div>
   }
 })
 
@@ -273,7 +266,7 @@ const App = observer(class App extends Component {
 
   render() {
     if (annotationsStore.texts.length === 0) {
-      return <DropTarget />;
+      return <RequestDatafile />;
     }
     return (
       <div className="App">
@@ -288,10 +281,12 @@ const App = observer(class App extends Component {
           </div>
           <div className="col-md-3" id="sidebar">
             <Sidebar topics={annotationsStore.topics} activeTopic={uistate.activeTopic} curTextIdx={uistate.curTextIdx} />
-            <button onClick={evt => {window.localStorage.clear(); window.location.reload();}}>Reset</button>
           </div>
         </div>
         <textarea id="results" readOnly="readOnly" value={JSON.stringify(annotationsStore.toJson())} />
+        <button style={{position: 'fixed', right: 0, bottom: 0}} onClick={evt => {if (prompt("Type RESET to reset") === "RESET") {
+          window.localStorage.clear(); window.location.reload();
+        }}}>Reset</button>
       </div>
     );
   }
