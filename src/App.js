@@ -280,6 +280,7 @@ const App = observer(class App extends Component {
     if (startTextOffset === range.endOffset) return;
     if (uistate.activeTopic >= annotationsStore.topics.length) {
       alert("Create a topic first, then select some text.")
+      return;
     }
     var ranges = annotationsStore.topics[uistate.activeTopic].ranges[uistate.curTextIdx];
     ranges.push([startTextOffset, endTextOffset]);
