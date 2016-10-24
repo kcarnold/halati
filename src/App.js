@@ -89,7 +89,6 @@ window.uistate = uistate;
 
 autorun(function() {
   var json = JSON.stringify(annotationsStore.toJson());
-  console.log("annotationsStore:", json);
   window.localStorage.annotations = json;
 });
 
@@ -252,16 +251,40 @@ const RequestDatafile = observer(class RequestDatafile extends Component {
   }
 })
 
+function simplifyRanges(text, ranges) {
+  var annotated = [{text: uistate.curText, style: {}}];
+  ranges.forEach(function([start, end]) {
+    annotated = addFormatting(annotated, start, end, {marked: true});
+  });
+  var newRanges = [], offset = 0;
+  annotated.forEach(({text, style}) => {
+    if (style.marked) {
+      if (newRanges.length && newRanges[newRanges.length - 1][1] == offset) {
+        // extend the existing range
+        newRanges[newRanges.length - 1][1] = offset + text.length;
+      } else {
+        newRanges.push([offset, offset + text.length]);
+      }
+    }
+    offset += text.length;
+  });
+  return newRanges;
+}
+
 
 const App = observer(class App extends Component {
   onMouseUp(evt) {
     var range = window.getSelection().getRangeAt(0);
-    if (range.startContainer !== range.endContainer || range.startOffset === range.endOffset) return;
-    var offset = +range.startContainer.parentNode.getAttribute('data-offset');
+    var startTextOffset = +range.startContainer.parentNode.getAttribute('data-offset') + range.startOffset;
+    var endTextOffset = +range.endContainer.parentNode.getAttribute('data-offset') + range.endOffset;
+    if (startTextOffset === range.endOffset) return;
     if (uistate.activeTopic >= annotationsStore.topics.length) {
       alert("Create a topic first, then select some text.")
     }
-    annotationsStore.topics[uistate.activeTopic].ranges[uistate.curTextIdx].push([offset + range.startOffset, offset + range.endOffset]);
+    var ranges = annotationsStore.topics[uistate.activeTopic].ranges[uistate.curTextIdx];
+    ranges.push([startTextOffset, endTextOffset]);
+    annotationsStore.topics[uistate.activeTopic].ranges[uistate.curTextIdx] = simplifyRanges(uistate.curText, ranges);
+    window.getSelection().removeAllRanges();
   }
 
   render() {
