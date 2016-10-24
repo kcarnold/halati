@@ -20,16 +20,30 @@ function makeEmptyRanges(n) {
   return ranges;
 }
 
+class Question {
+  constructor(id, text) {
+    this.id = id;
+    this.text = text;
+    extendObservable(this, {
+      responses: []
+    });
+  }
+}
+
 class AnnotationStore {
   constructor() {
     extendObservable(this, {
       reviews: [],
       regions: [],
+      questions: [],
       lastColorIdx: 0,
       setReviews: action(function(reviews) {
         this.reviews = reviews;
         this.regions.forEach(topic => {
           topic.ranges = makeEmptyRanges(reviews.length);
+        });
+        this.questions.forEach(question => {
+          question.responses = [];
         });
       })
     });
@@ -38,6 +52,7 @@ class AnnotationStore {
   fromJson(json) {
     this.reviews = json.reviews;
     this.regions = json.regions;
+    this.questions = json.questions;
   };
 
   toJson() {
@@ -56,6 +71,7 @@ window.annotationsStore = annotationsStore;
 if (window.localStorage.annotations){
   annotationsStore.fromJson(JSON.parse(window.localStorage.annotations));
 } else {
+  annotationsStore.questions = [new Question('quality', 'Overall quality')];
   annotationsStore.setReviews(["never had korean chicken before but this was good in comparison to our homeland version. crispy and tender chicken that was not too greasy. we also ordered topoki, a saucy plate of some chewy doughy stuff, similar to the texture of mochi. \n\nthe lack of stars were due to the long wait (made to order), the cramped space, and the not being able to get more than one itsy container of sauce. let's get it straight - it's bbq sauce, not michael jackson's sweat.", "review 2"]);
 }
 
@@ -192,6 +208,11 @@ const Sidebar = observer(class Sidebar extends Component {
       idx={i} isActive={i === activeRegion}
       topic={topic} curReview={curReview} />)}
       <button onClick={this.handleAddRegion}>{FA('plus')} Add Topic</button>
+
+      {annotationsStore.questions.map((question, i) => <div key={question.id}>
+        <label>{question.text}
+          <input onChange={evt => {question.responses[curReview] = +evt.target.value}} type="number" min="1" max="7" value={question.responses[curReview]} />
+        </label></div>)}
     </div>;
   }
 });
