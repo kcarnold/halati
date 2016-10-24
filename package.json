@@ -1,5 +1,6 @@
 {
   "name": "halati",
+  "homepage": "http://kcarnold.github.io/halati",
   "version": "0.1.0",
   "private": true,
   "devDependencies": {
