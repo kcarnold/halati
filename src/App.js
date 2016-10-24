@@ -176,12 +176,12 @@ const SidebarTopic = observer(class SidebarTopic extends Component {
   render() {
     let {isActive, topic, curReview} = this.props;
     return (
-      <div className={isActive ? "active" : ""}>
+      <div className={"sidebarGroup " + (isActive ? "active" : "")}>
         <div
           className="topic"
           style={{background: topic.color}}
           onClick={this.handleClick}>
-          {topic.name}
+          <span>{topic.name}</span>
           <button onClick={this.handleEditTitle}>{FA('edit')}</button>
           <button onClick={this.handleRemove}>{FA('remove')}</button>
         </div>
@@ -203,15 +203,21 @@ const Sidebar = observer(class Sidebar extends Component {
 
   render() {
     let {activeTopic, topics, curReview} = this.props;
-    return <div>{topics.map((topic, i) => <SidebarTopic
+    return <div>
+      <div className="sidebarGroup">
+        <div>Overall questions:</div>
+        {annotationsStore.questions.map((question, i) => <div key={question.id}>
+          <label>{question.text}
+            <input onChange={evt => {question.responses[curReview] = +evt.target.value}} type="number" min="1" max="7" value={question.responses[curReview] || ""} />
+          </label></div>)}
+      </div>
+
+      <div>Topics:</div>
+      {topics.map((topic, i) => <SidebarTopic
       key={i}
       idx={i} isActive={i === activeTopic}
       topic={topic} curReview={curReview} />)}
       <button onClick={this.handleAddTopic}>{FA('plus')} Add Topic</button>
-      {annotationsStore.questions.map((question, i) => <div key={question.id}>
-        <label>{question.text}
-          <input onChange={evt => {question.responses[curReview] = +evt.target.value}} type="number" min="1" max="7" value={question.responses[curReview || ""]} />
-        </label></div>)}
 
     </div>;
   }
@@ -251,6 +257,11 @@ const App = observer(class App extends Component {
   render() {
     return (
       <div className="App">
+        <div>
+          <button onClick={() => {uistate.curReview = uistate.curReview - 1}} disabled={uistate.curReview === 0}>&lt;</button>
+          Review {uistate.curReview + 1} of {annotationsStore.reviews.length}
+          <button onClick={() => {uistate.curReview = uistate.curReview + 1}} disabled={uistate.curReview === annotationsStore.reviews.length - 1}>&gt;</button>
+        </div>
         <div className="row">
           <div className="col-md-9" id="text" onMouseUp={this.onMouseUp}><MainText />
           </div>
@@ -259,6 +270,7 @@ const App = observer(class App extends Component {
             <button onClick={evt => {window.localStorage.clear(); window.location.reload();}}>Reset</button>
           </div>
         </div>
+        <textarea id="results" readOnly="readOnly" value={JSON.stringify(annotationsStore.toJson())} />
       </div>
     );
   }
