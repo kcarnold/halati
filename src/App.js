@@ -317,7 +317,7 @@ const App = observer(class App extends Component {
               </label></div>)}
           </div>
         </div>
-        <textarea id="results" readOnly="readOnly" value={JSON.stringify(annotationsStore.toJson())} />
+        <textarea id="results" readOnly="readOnly" value={JSON.stringify(annotationsStore.toJson())} onClick={evt => evt.target.select()} />
         <button style={{position: 'fixed', right: 0, bottom: 0}} onClick={evt => {if (prompt("Type RESET to reset") === "RESET") {
           window.localStorage.clear(); window.location.reload();
         }}}>Reset</button>
