@@ -239,7 +239,11 @@ function handleFiles(files) {
 
 const RequestDatafile = observer(class RequestDatafile extends Component {
   handlePaste = (evt) => {
-    setTimeout(() => annotationsStore.fromJson(JSON.parse(this.textarea.value)), 10);
+    setTimeout(() => {
+      var pasted = this.textarea.value;
+      var filtered = pasted.replace(/[^]*\nBEGIN_DOCUMENT\n/, '');
+      annotationsStore.fromJson(JSON.parse(filtered));
+    }, 10);
   }
 
   render() {
