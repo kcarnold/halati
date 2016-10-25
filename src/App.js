@@ -238,8 +238,14 @@ function handleFiles(files) {
 }
 
 const RequestDatafile = observer(class RequestDatafile extends Component {
+  handlePaste = (evt) => {
+    setTimeout(() => annotationsStore.fromJson(JSON.parse(this.textarea.value)), 10);
+  }
+
   render() {
-    return <div className="jumbotron">Select the data file: <input type="file" onChange={evt => handleFiles(evt.target.files)} /></div>
+    return <div className="container">
+      <div className="jumbotron">Select the data file: <input type="file" onChange={evt => handleFiles(evt.target.files)} /><br/> Or paste here:<br/> <textarea ref={e => this.textarea = e} onPaste={this.handlePaste} /></div>
+    </div>;
   }
 })
 
