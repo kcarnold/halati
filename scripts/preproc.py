@@ -32,7 +32,14 @@ chars_per_topic = [dict(annotator=annotator, item=topic['name'], text_idx=text_i
 from nltk.metrics.agreement import AnnotationTask
 def interval_distance(a, b):
     return pow(a-b, 2)
-questions_task = AnnotationTask(data=[(x['annotator'], x['text_idx'], x['response']) for x in question_responses if x['item'] == 'quality'],
-                                      distance=interval_distance)
+
+def agreement_metrics(annotation_obj):
+    return {method: getattr(annotation_obj, method)() for method in 'alpha'.split()} # weighted_kappa S pi
+
+agreement_by_question = {
+     question: agreement_metrics(AnnotationTask(data=[
+            (x['annotator'], x['text_idx'], x['response']) for x in question_responses
+            if x['item'] == question], distance=interval_distance))
+     for question in merged_responses.item.unique()}
 #%%
 questions_task.alpha()
