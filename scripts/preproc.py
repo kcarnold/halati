@@ -32,6 +32,7 @@ chars_per_topic = [dict(annotator=annotator, item=topic['name'], text_idx=text_i
 from nltk.metrics.agreement import AnnotationTask
 def interval_distance(a, b):
     return pow(a-b, 2)
-questions_task = AnnotationTask(data=[(x['annotator'], x['item'], x['response']) for x in question_responses],
+questions_task = AnnotationTask(data=[(x['annotator'], x['text_idx'], x['response']) for x in question_responses if x['item'] == 'quality'],
                                       distance=interval_distance)
 #%%
+questions_task.alpha()
