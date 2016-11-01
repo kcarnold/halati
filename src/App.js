@@ -191,15 +191,15 @@ const SidebarTopic = observer(class SidebarTopic extends Component {
 
 const Sidebar = observer(class Sidebar extends Component {
   handleAddTopic = () => {
-    this.props.topics.push(new Topic(prompt("Name for this topic?"), annotationsStore.nextColor(), makeEmptyRanges(annotationsStore.texts.length)));
+    this.props.annotationsStore.topics.push(new Topic(prompt("Name for this topic?"), this.props.annotationsStore.nextColor(), makeEmptyRanges(this.props.annotationsStore.texts.length)));
     uistate.setActiveTopic(this.props.topics.length - 1);
   };
 
   render() {
-    let {activeTopic, topics, curTextIdx} = this.props;
+    let {annotationsStore, activeTopic, curTextIdx} = this.props;
     return <div>
       <div>Topics:</div>
-      {topics.map((topic, i) => <SidebarTopic
+      {annotationsStore.topics.map((topic, i) => <SidebarTopic
       key={i}
       idx={i} isActive={i === activeTopic}
       topic={topic} curTextIdx={curTextIdx} />)}
@@ -216,7 +216,7 @@ function FA(name) {
 const MainText = observer(class MainText extends Component {
   render() {
     var annotated = [{text: uistate.curText, style: {}}];
-    annotationsStore.topics.forEach(function({name, color, ranges}) {
+    this.props.annotationsStore.topics.forEach(function({name, color, ranges}) {
         ranges[uistate.curTextIdx].forEach(function([start, end]) {
           annotated = addFormatting(annotated, start, end, {background: color});
         });
@@ -303,10 +303,10 @@ const App = observer(class App extends Component {
           <button onClick={() => {uistate.curTextIdx = uistate.curTextIdx + 1}} disabled={uistate.curTextIdx === annotationsStore.texts.length - 1}>&gt;</button>
         </div>
         <div className="row">
-          <div className="col-md-6" id="text" onMouseUp={this.onMouseUp}><MainText />
+          <div className="col-md-6" id="text" onMouseUp={this.onMouseUp}><MainText annotationsStore={annotationsStore} />
           </div>
           <div className="col-md-3" id="sidebar">
-            <Sidebar topics={annotationsStore.topics} activeTopic={uistate.activeTopic} curTextIdx={uistate.curTextIdx} />
+            <Sidebar annotationsStore={annotationsStore} topics={annotationsStore.topics} activeTopic={uistate.activeTopic} curTextIdx={uistate.curTextIdx} />
           </div>
           <div className="col-md-3">
             <div>Overall questions:</div>
