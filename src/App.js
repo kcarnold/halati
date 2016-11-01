@@ -160,6 +160,8 @@ const SidebarTopic = observer(class SidebarTopic extends Component {
   };
 
   handleRemove = (evt) => {
+    if (!confirm("Are you sure you want to remove the topic \""+this.props.topic.name+"\"?"))
+      return;
     if (uistate.activeTopic >= this.props.idx) {
       uistate.setActiveTopic(uistate.activeTopic - 1);
     }
