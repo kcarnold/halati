@@ -228,13 +228,16 @@ const MainText = observer(class MainText extends Component {
 });
 
 
+function doLoadData(data) {
+  var filtered = data.replace(/[^]*\nBEGIN_DOCUMENT\n/, '');
+  annotationsStore.fromJson(JSON.parse(filtered));
+}
+
 function handleFiles(files) {
   var file = files[0];
   var reader = new FileReader();
   reader.onload = evt => {
-    console.log("got data");
-    var data = JSON.parse(reader.result);
-    annotationsStore.fromJson(data);
+    doLoadData(reader.result);
   };
   reader.readAsText(file);
 }
@@ -242,9 +245,7 @@ function handleFiles(files) {
 const RequestDatafile = observer(class RequestDatafile extends Component {
   handlePaste = (evt) => {
     setTimeout(() => {
-      var pasted = this.textarea.value;
-      var filtered = pasted.replace(/[^]*\nBEGIN_DOCUMENT\n/, '');
-      annotationsStore.fromJson(JSON.parse(filtered));
+      doLoadData(this.textarea.value);
     }, 10);
   }
 
