@@ -1,65 +1,37 @@
 import React, { Component } from 'react';
 import {extendObservable, observable, action, autorun, toJS, transaction} from 'mobx';
-import {observer} from 'mobx-react';
+import {observer, Provider} from 'mobx-react';
+const d3 = require('d3');//import d3 from 'd3';
+window.d3 = d3;
 
-var colors = ['#8dd3c7','#ffffb3','#bebada','#fb8072','#80b1d3','#fdb462','#b3de69','#fccde5','#d9d9d9','#bc80bd']; // colorbrewer set3
+import {formattedRanges, addFormatting} from './styledRanges';
 
-class Topic {
-  constructor(name, color, ranges) {
-    extendObservable(this, {
-      name: name,
-      color: color,
-      ranges: ranges || []
-    });
-  }
-}
-
-function makeEmptyRanges(n) {
-  let ranges = [];
-  for (let i=0; i<n; i++) ranges.push([]);
-  return ranges;
-}
-
-class Question {
-  constructor(id, text) {
-    this.id = id;
-    this.text = text;
-    extendObservable(this, {
-      responses: []
-    });
-  }
-}
+var colors = d3.schemeCategory10; //['#8dd3c7','#ffffb3','#bebada','#fb8072','#80b1d3','#fdb462','#b3de69','#fccde5','#d9d9d9','#bc80bd']; // colorbrewer set3
 
 class AnnotationStore {
   constructor() {
     extendObservable(this, {
       texts: [],
-      topics: [],
-      questions: [],
-      lastColorIdx: 0,
+      questions: [
+        {text: "What kind of meal did you come for?", tags: ['food', 'occasion']},
+        {text: "What kind of food were you hoping to get?", tags: ['food', 'expectations']},
+        {text: "On what day of the week did you visit?", tags: ['occasion']},
+      ],
+      annotations: [],
+      get curAnnotations() {
+        return [];
+      }
     });
   };
 
   fromJson(json) {
     transaction(() => {
       this.texts = json.texts;
-      this.topics = json.topics || [];
-      this.questions = json.questions;
-      this.lastColorIdx = json.lastColorIdx || 0;
-      this.questions.forEach(question => {
-        question.responses = question.responses || observable(Array(this.texts.length));
-      });
     });
   };
 
   toJson() {
     return toJS(this);
-  };
-
-  nextColor() {
-    var idx = this.lastColorIdx;
-    this.lastColorIdx = idx + 1;
-    return colors[idx % colors.length];
   };
 }
 
@@ -68,6 +40,9 @@ window.annotationsStore = annotationsStore;
 if (window.localStorage.annotations){
   annotationsStore.fromJson(JSON.parse(window.localStorage.annotations));
 }
+autorun(function() {
+  window.localStorage.annotations = JSON.stringify(annotationsStore.toJson());
+});
 
 class UiState {
   constructor(annotationsStore) {
@@ -75,10 +50,7 @@ class UiState {
     extendObservable(this, {
       curTextIdx: 0,
       get curText() {return this.annotationsStore.texts[this.curTextIdx];},
-      activeTopic: 0,
-      setActiveTopic: action(function(i) {
-        this.activeTopic = i;
-      })
+      get curAnnotation() { return {range: [4, 10]}; },
     });
   }
 }
@@ -87,126 +59,23 @@ var uistate = new UiState(annotationsStore);
 window.uistate = uistate;
 
 
-autorun(function() {
-  var json = JSON.stringify(annotationsStore.toJson());
-  window.localStorage.annotations = json;
-});
-
-
-function formattedRanges(ranges) {
-  var offset = 0;
-  return ranges.map(({text, style}, i) => <span key={i} style={style} data-offset={(offset += text.length) - text.length}>{text}</span>);
-}
-
-function joinStyle(a, b) { return {...a, ...b};}
-
-function addFormatting(existingRanges, start, end, fmt) {
-  let res = [];
-  for (let existingRangeIdx = 0; existingRangeIdx < existingRanges.length; existingRangeIdx++) {
-    let range = existingRanges[existingRangeIdx];
-    let textLen = range.text.length;
-    if (start > 0) {
-      // before start.
-      if (textLen <= start) {
-        // Pass through unchanged text.
-        res.push(range);
-      } else {
-        // Break apart this range.
-        res.push({text: range.text.slice(0, start), style: range.style});
-        if (end < textLen) {
-          // Range also ends within this block.
-          res.push({text: range.text.slice(start, end), style: joinStyle(range.style, fmt)});
-          res.push({text: range.text.slice(end), style: range.style});
-        } else {
-          res.push({text: range.text.slice(start), style: joinStyle(range.style, fmt)});
-        }
-      }
-    } else if (end > 0) {
-      // within range.
-      if (textLen <= end) {
-        res.push({text: range.text, style: joinStyle(range.style, fmt)});
-      } else {
-        // Break apart.
-        if (end > 0) {
-          res.push({text: range.text.slice(0, end), style: joinStyle(range.style, fmt)});
-        }
-        res.push({text: range.text.slice(end), style: range.style});
-      }
-    } else {
-      // Pass through remaining text.
-      res.push(range);
-    }
-    start -= textLen;
-    end -= textLen;
-  }
-  return res;
-}
-
-const TopicInstance = observer(class TopicInstance extends Component {
+const AnnoEditor = observer(['uistate'], class AnnoEditor extends Component {
   render() {
-    return <div><button onClick={this.props.onRemove}>x</button> {this.props.text}</div>;
+    let {uistate} = this.props;
+    let [start, end] = uistate.curAnnotation.range;
+    return <div className="annoEditor">
+      {uistate.curText.slice(start, end)}
+    </div>;
   }
 });
 
-const SidebarTopic = observer(class SidebarTopic extends Component {
-  handleClick = () => {
-    uistate.setActiveTopic(this.props.idx);
-  };
-
-  handleEditTitle = () => {
-    let newName = prompt('New name for this topic', this.props.topic.name);
-    if (newName.length)
-      this.props.topic.name = newName;
-  };
-
-  handleRemove = (evt) => {
-    if (!confirm("Are you sure you want to remove the topic \""+this.props.topic.name+"\"?"))
-      return;
-    if (uistate.activeTopic >= this.props.idx) {
-      uistate.setActiveTopic(uistate.activeTopic - 1);
-    }
-    annotationsStore.topics.splice(this.props.idx, 1);
-    evt.stopPropagation();
-  };
-
+const Sidebar = observer(['annotationsStore'], class Sidebar extends Component {
   render() {
-    let {isActive, topic, curTextIdx} = this.props;
-    return (
-      <div className={"sidebarGroup " + (isActive ? "active" : "")}>
-        <div
-          className="topic"
-          style={{background: topic.color}}
-          onClick={this.handleClick}>
-          <span>{topic.name}</span>
-          <button onClick={this.handleEditTitle}>{FA('edit')}</button>
-          <button onClick={this.handleRemove}>{FA('remove')}</button>
-        </div>
-      <div>
-        {topic.ranges[curTextIdx].map(([start, end], i) => <TopicInstance
-          key={i}
-          onRemove={() => topic.ranges[curTextIdx].splice(i, 1)}
-          text={uistate.curText.slice(start, end)} />)}
-      </div>
-      </div>);
-  }
-});
-
-const Sidebar = observer(class Sidebar extends Component {
-  handleAddTopic = () => {
-    this.props.annotationsStore.topics.push(new Topic(prompt("Name for this topic?"), this.props.annotationsStore.nextColor(), makeEmptyRanges(this.props.annotationsStore.texts.length)));
-    uistate.setActiveTopic(this.props.topics.length - 1);
-  };
-
-  render() {
-    let {annotationsStore, activeTopic, curTextIdx} = this.props;
+    let {annotationsStore} = this.props;
     return <div>
-      <div>Topics:</div>
-      {annotationsStore.topics.map((topic, i) => <SidebarTopic
-      key={i}
-      idx={i} isActive={i === activeTopic}
-      topic={topic} curTextIdx={curTextIdx} />)}
-      <button onClick={this.handleAddTopic}>{FA('plus')} Add Topic</button>
-
+      <AnnoEditor />
+      <div>Questions:</div>
+      <div>Current annotations:</div>
     </div>;
   }
 });
@@ -215,13 +84,12 @@ function FA(name) {
   return <i className={"fa fa-"+name} />;
 }
 
-const MainText = observer(class MainText extends Component {
+const MainText = observer(['uistate', 'annotationsStore'], class MainText extends Component {
   render() {
     var annotated = [{text: uistate.curText, style: {}}];
-    this.props.annotationsStore.topics.forEach(function({name, color, ranges}) {
-        ranges[uistate.curTextIdx].forEach(function([start, end]) {
-          annotated = addFormatting(annotated, start, end, {background: color});
-        });
+    this.props.annotationsStore.curAnnotations.forEach(function({name, range}, i) {
+        let [start, end] = range;
+        annotated = addFormatting(annotated, start, end, {background: colors[i]});
       });
     return <div className="real-text">{formattedRanges(annotated)}</div>;
   }
@@ -276,6 +144,20 @@ function simplifyRanges(text, ranges) {
   return newRanges;
 }
 
+const OverallQuestions = observer(['annotationsStore'], class OverallQuestions extends Component {
+  render() {
+    let {annotationsStore} = this.props;
+    return null;
+    // return <div>
+    //   {annotationsStore.questions.map((question, i) => <div key={question.id}>
+    //     <label title={question.instructions}>{question.text + " "}
+    //       <i className="fa fa-info-circle" title={question.instructions} /><br/>
+    //       <input onChange={evt => {question.responses[curTextIdx] = +evt.target.value}} type="number" min={question.min} max={question.max} value={question.responses[curTextIdx] || ""} />
+    //     </label></div>)}
+    //   </div>;
+  }
+});
+
 
 const App = observer(class App extends Component {
   onMouseUp(evt) {
@@ -299,6 +181,7 @@ const App = observer(class App extends Component {
       return <RequestDatafile />;
     }
     return (
+      <Provider annotationsStore={annotationsStore} uistate={uistate}>
       <div className="container">
         <div>
           <button onClick={() => {uistate.curTextIdx = uistate.curTextIdx - 1}} disabled={uistate.curTextIdx === 0}>&lt;</button>
@@ -306,18 +189,13 @@ const App = observer(class App extends Component {
           <button onClick={() => {uistate.curTextIdx = uistate.curTextIdx + 1}} disabled={uistate.curTextIdx === annotationsStore.texts.length - 1}>&gt;</button>
         </div>
         <div className="row">
-          <div className="col-md-6" id="text" onMouseUp={this.onMouseUp}><MainText annotationsStore={annotationsStore} />
+          <div className="col-md-6" id="text" onMouseUp={this.onMouseUp}><MainText />
           </div>
           <div className="col-md-3" id="sidebar">
-            <Sidebar annotationsStore={annotationsStore} topics={annotationsStore.topics} activeTopic={uistate.activeTopic} curTextIdx={uistate.curTextIdx} />
+            <Sidebar />
           </div>
           <div className="col-md-3">
-            <div>Overall questions:</div>
-            {annotationsStore.questions.map((question, i) => <div key={question.id}>
-              <label title={question.instructions}>{question.text + " "}
-                <i className="fa fa-info-circle" title={question.instructions} /><br/>
-                <input onChange={evt => {question.responses[curTextIdx] = +evt.target.value}} type="number" min={question.min} max={question.max} value={question.responses[curTextIdx] || ""} />
-              </label></div>)}
+            <OverallQuestions/>
           </div>
         </div>
         <textarea id="results" readOnly="readOnly" value={JSON.stringify(annotationsStore.toJson())} onClick={evt => evt.target.select()} />
@@ -325,6 +203,7 @@ const App = observer(class App extends Component {
           window.localStorage.clear(); window.location.reload();
         }}}>Reset</button>
       </div>
+      </Provider>
     );
   }
 });
