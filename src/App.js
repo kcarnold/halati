@@ -8,19 +8,21 @@ import {formattedRanges, addFormatting} from './styledRanges';
 
 var colors = d3.schemeCategory10; //['#8dd3c7','#ffffb3','#bebada','#fb8072','#80b1d3','#fdb462','#b3de69','#fccde5','#d9d9d9','#bc80bd']; // colorbrewer set3
 
+var initialQuestions = [
+        {text: "What kind of meal did you come for?", tags: ['food', 'occasion']},
+        {text: "What kind of food were you hoping to get?", tags: ['food', 'expectations']},
+        {text: "On what day of the week did you visit?", tags: ['occasion']},
+        {text: "When did you come?", tags: ['occasion']}
+      ];
+
 class AnnotationStore {
   constructor() {
     extendObservable(this, {
       texts: [],
-      questions: [
-        {text: "What kind of meal did you come for?", tags: ['food', 'occasion']},
-        {text: "What kind of food were you hoping to get?", tags: ['food', 'expectations']},
-        {text: "On what day of the week did you visit?", tags: ['occasion']},
+      questions: initialQuestions,
+      annotations: [
+        {textIdx: 1, range: [4, 10], question: initialQuestions[3]},
       ],
-      annotations: [],
-      get curAnnotations() {
-        return [];
-      }
     });
   };
 
@@ -48,9 +50,18 @@ class UiState {
   constructor(annotationsStore) {
     this.annotationsStore = annotationsStore;
     extendObservable(this, {
-      curTextIdx: 0,
+      curTextIdx: 1,
+      curAnnotationIdx: 0,
+      tempAnnotation: null,
       get curText() {return this.annotationsStore.texts[this.curTextIdx];},
-      get curAnnotation() { return {range: [4, 10]}; },
+      get curAnnotations() {
+        return this.annotationsStore.annotations.filter(ann => ann.textIdx == this.curTextIdx);
+      },
+      get curAnnotation() {
+        if (this.tempAnnotation !== null)
+          return this.tempAnnotation;
+        return this.curAnnotations[this.curAnnotationIdx];
+      }
     });
   }
 }
@@ -62,12 +73,30 @@ window.uistate = uistate;
 const AnnoEditor = observer(['uistate'], class AnnoEditor extends Component {
   render() {
     let {uistate} = this.props;
-    let [start, end] = uistate.curAnnotation.range;
+    let {curAnnotation} = uistate;
+    let [start, end] = curAnnotation.range;
     return <div className="annoEditor">
+      <div>Text:</div>
       {uistate.curText.slice(start, end)}
+      <div>Answers the question:</div>
+      {curAnnotation.question.text}
     </div>;
   }
 });
+
+const QuestionsList = observer(['annotationsStore'], class QuestionsList extends Component {
+  render() {
+    let {annotationsStore} = this.props;
+    let {questions} = annotationsStore;
+    return <div className="QuestionsList">
+      {questions.map((question, i) => <div key={i}>
+        {question.text}
+        ({question.tags.join(', ')})
+      </div>)}
+    </div>;
+  }
+});
+
 
 const Sidebar = observer(['annotationsStore'], class Sidebar extends Component {
   render() {
@@ -75,6 +104,7 @@ const Sidebar = observer(['annotationsStore'], class Sidebar extends Component {
     return <div>
       <AnnoEditor />
       <div>Questions:</div>
+      <QuestionsList/>
       <div>Current annotations:</div>
     </div>;
   }
@@ -87,7 +117,7 @@ function FA(name) {
 const MainText = observer(['uistate', 'annotationsStore'], class MainText extends Component {
   render() {
     var annotated = [{text: uistate.curText, style: {}}];
-    this.props.annotationsStore.curAnnotations.forEach(function({name, range}, i) {
+    this.props.uistate.curAnnotations.forEach(function({name, range}, i) {
         let [start, end] = range;
         annotated = addFormatting(annotated, start, end, {background: colors[i]});
       });
