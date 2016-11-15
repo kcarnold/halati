@@ -134,6 +134,10 @@ const AnnoEditDialog = observer(['uistate', 'annotationsStore'], class AnnoEditD
     let preText = '\u2026'+uistate.curText.slice(Math.max(0, start - 10), start);
     let postText = uistate.curText.slice(end, end+10)+'\u2026';
     return <div className="AnnoEditDialog">
+      <div>
+        Shift beginning: <button className="btn btn-default btn-xs" onClick={() => tempAnnotation.range[0]--}>{"<"}</button><button className="btn btn-default btn-xs" onClick={() => tempAnnotation.range[0]++}>{">"}</button>{' '}
+        Shift end: <button className="btn btn-default btn-xs" onClick={() => tempAnnotation.range[1]--}>{"<"}</button><button className="btn btn-default btn-xs" onClick={() => tempAnnotation.range[1]++}>{">"}</button>
+      </div>
       <div className="text">{preText}<span className="curAnnoText">{uistate.curText.slice(start, end)}</span>{postText}</div>
       Answers the question(s):
       <ul>
