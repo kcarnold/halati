@@ -23,6 +23,13 @@ class AnnotationStore {
       annotations: [
         // {textIdx: 1, range: [4, 10], question: initialQuestions[3]},
       ],
+      get allTags() {
+        var tags = d3.set();
+        this.questions.forEach(q => q.tags.forEach(t => tags.add(t)));
+        var tagValues = tags.values();
+        tagValues.sort();
+        return tagValues;
+      }
     });
   };
 
@@ -65,14 +72,15 @@ var uistate = new UiState(annotationsStore);
 window.uistate = uistate;
 
 
-const AnnoEditDialog = observer(['uistate'], class AnnoEditDialog extends Component {
+const AnnoEditDialog = observer(['uistate', 'annotationsStore'], class AnnoEditDialog extends Component {
   handleAddQuestion = (evt) => {
     console.log("Add question", this.newQuestionElt.value);
     evt.preventDefault();
   };
 
   render() {
-    let {uistate} = this.props;
+    let {uistate, annotationsStore} = this.props;
+    let {questions} = annotationsStore;
     let {tempAnnotation} = uistate;
     let [start, end] = tempAnnotation.range;
     return <div className="AnnoEditDialog">
@@ -82,23 +90,16 @@ const AnnoEditDialog = observer(['uistate'], class AnnoEditDialog extends Compon
       <div>filter by tag: <input id="tag-filter" type="search" value={uistate.tagSearch} onInput={(evt) => {uistate.tagSearch = evt.target.value; return false;}} /></div>
       <div><input id="new-question" ref={(elt) => {this.newQuestionElt = elt;}} /><button onClick={this.handleAddQuestion}>Add Question</button></div>
       {uistate.tagSearch}
-    </div>;
-  }
-});
-
-const QuestionsList = observer(['annotationsStore'], class QuestionsList extends Component {
-  render() {
-    let {annotationsStore} = this.props;
-    let {questions} = annotationsStore;
-    return <div className="QuestionsList">
-      {questions.map((question, i) => <div key={i}>
-        {question.text}
-        ({question.tags.join(', ')})
+      {annotationsStore.allTags.map(tag => <div key={tag} className="annoTag">
+        <h1>{tag}</h1>
+        {annotationsStore.questions.filter(q => q.tags.indexOf(tag) !== -1).map((question, i) => <div key={i}>
+          {question.text}
+          ({question.tags.join(', ')})
+        </div>)}
       </div>)}
     </div>;
   }
 });
-
 
 function FA(name) {
   return <i className={"fa fa-"+name} />;
