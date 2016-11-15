@@ -36,6 +36,8 @@ class AnnotationStore {
   fromJson(json) {
     transaction(() => {
       this.texts = json.texts;
+      this.questions = json.questions;
+      this.annotations = json.annotations;
     });
   };
 
