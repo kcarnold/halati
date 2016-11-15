@@ -62,11 +62,12 @@ body {
     right: 30px;
     bottom: 30px;
     padding: 5px;
+    display: flex;
+    flex-flow: column nowrap;
 }
 
 .AnnoEditDialog .text {
   font-size: 20px;
-  text-align: center;
 }
 
 .question-tags {
@@ -99,8 +100,23 @@ label.anno-question {
 }
 
 .dialog-actions {
-    position: absolute;
-    bottom: 5px;
     text-align: right;
-    right: 5px;
+    padding: 5px;
+}
+
+.existing-questions {
+    flex: 1 1 auto;
+    overflow: scroll;
+}
+
+.add-question-line {
+    /* display: flex; */
+}
+
+input#new-question {
+    width: 50%;
+}
+
+span.curAnnoText {
+    background: yellowgreen;
 }

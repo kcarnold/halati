@@ -20,9 +20,7 @@ class AnnotationStore {
     extendObservable(this, {
       texts: [],
       questions: initialQuestions,
-      annotations: [
-        // {textIdx: 1, range: [4, 10], question: initialQuestions[3]},
-      ],
+      annotations: [],
       get allTags() {
         var tags = d3.set();
         this.questions.forEach(q => q.tags.forEach(t => tags.add(t)));
@@ -133,8 +131,10 @@ const AnnoEditDialog = observer(['uistate', 'annotationsStore'], class AnnoEditD
       let regex = new RegExp(splitWords(annoDialogState.tagSearch).map(t => escapeRegExp(t)).join('|'));
       tags = tags.filter(t => !!regex.exec(t));
     }
+    let preText = '\u2026'+uistate.curText.slice(Math.max(0, start - 10), start);
+    let postText = uistate.curText.slice(end, end+10)+'\u2026';
     return <div className="AnnoEditDialog">
-      <div className="text">{uistate.curText.slice(start, end)}</div>
+      <div className="text">{preText}<span className="curAnnoText">{uistate.curText.slice(start, end)}</span>{postText}</div>
       Answers the question(s):
       <ul>
         {tempAnnotation.questions.map(text => <li key={text}>{text}</li>)}
@@ -148,8 +148,9 @@ const AnnoEditDialog = observer(['uistate', 'annotationsStore'], class AnnoEditD
       <div className="add-question-line">
         <input id="new-question" value={annoDialogState.curEditQuestion} onChange={evt => {annoDialogState.curEditQuestion = evt.target.value;}} />
         tags: <input value={annoDialogState.curEditQuestionTags} onChange={evt => {annoDialogState.curEditQuestionTags = evt.target.value;}} />
-        <button onClick={this.handleAddQuestion}>Add Question</button>
+        <button className="btn btn-primary btn-sm" onClick={this.handleAddQuestion}>Add Question</button>
       </div>
+      <div className="existing-questions">
       {tags.map(tag => <div key={tag} className="annoTag">
         <h1>{tag}</h1>
         {annotationsStore.questions.filter(q => q.tags.indexOf(tag) !== -1).map((question, i) => <label key={i} className="anno-question">
@@ -165,6 +166,7 @@ const AnnoEditDialog = observer(['uistate', 'annotationsStore'], class AnnoEditD
           <div className="question-tags">{question.tags.join(', ')}</div>
         </label>)}
       </div>)}
+      </div>
       <div className="dialog-actions">
         <button className="btn btn-default" onClick={e => {uistate.cancelAnnotation(); }}>Cancel</button>
         <button className="btn btn-primary" disabled={tempAnnotation.questions.length === 0} onClick={this.handleAddAnnotation}>Add annotation</button>
