@@ -53,18 +53,52 @@ autorun(function() {
   window.localStorage.annotations = JSON.stringify(annotationsStore.toJson());
 });
 
+function splitWords(x) {
+  return x.trim().split(/\s+/);
+}
+
+class AnnoDialogState {
+  constructor(uistate, annotationsStore, tempAnnotation) {
+    extendObservable(this, {
+      uistate: uistate,
+      annotationsStore: annotationsStore,
+      tempAnnotation,
+      tagSearch: '',
+      curEditQuestion: '',
+      curEditQuestionTags: '',
+    });
+  }
+
+  addAnnotation() {
+    transaction(() => {
+      this.annotationsStore.annotations.push(this.tempAnnotation);
+      this.uistate.annoDialogState = null;
+    });
+  }
+}
+
 class UiState {
   constructor(annotationsStore) {
     this.annotationsStore = annotationsStore;
     extendObservable(this, {
       curTextIdx: 1,
-      tempAnnotation: null,//{textIdx: 1, range: [4, 10], questions: []},//, question: initialQuestions[3]},
-      tagSearch: '',
+      annoDialogState: null,
       get curText() {return this.annotationsStore.texts[this.curTextIdx];},
       get curAnnotations() {
         return this.annotationsStore.annotations.filter(ann => ann.textIdx == this.curTextIdx);
       },
     });
+  }
+
+  startAnnotation(range) {
+    this.annoDialogState = new AnnoDialogState(
+      uistate,
+      annotationsStore,
+      {textIdx: uistate.curTextIdx, range: range, questions: []});
+  }
+
+  cancelAnnotation() {
+    this.annoDialogState = null;
   }
 }
 
@@ -75,50 +109,65 @@ var escapeRegExp = require('lodash.escaperegexp');
 
 const AnnoEditDialog = observer(['uistate', 'annotationsStore'], class AnnoEditDialog extends Component {
   handleAddQuestion = (evt) => {
-    console.log("Add question", this.newQuestionElt.value);
+    let {annoDialogState, annotationsStore, uistate} = this.props;
+    let text = annoDialogState.curEditQuestion;
+    let tags = splitWords(annoDialogState.curEditQuestionTags);
+    annotationsStore.questions.push({text, tags});
+    annoDialogState.tempAnnotation.questions.push(text);
     evt.preventDefault();
   };
 
   handleAddAnnotation = evt => {
-    transaction(() => {
-      this.props.annotationsStore.annotations.push(this.props.uistate.tempAnnotation);
-      this.props.uistate.tempAnnotation = null;
-      this.props.tagSearch = '';
-    });
+    this.props.annoDialogState.addAnnotation();
   };
 
   render() {
     let {uistate, annotationsStore} = this.props;
     let {questions} = annotationsStore;
-    let {tempAnnotation} = uistate;
+    let {annoDialogState} = this.props;
+    let {tempAnnotation} = annoDialogState;
     let [start, end] = tempAnnotation.range;
     let tags = annotationsStore.allTags;
-    if (uistate.tagSearch) {
-      let regex = new RegExp(uistate.tagSearch.trim().split(/\s+/).map(t => escapeRegExp(t)).join('|'));
+    if (annoDialogState.tagSearch) {
+      let regex = new RegExp(splitWords(annoDialogState.tagSearch).map(t => escapeRegExp(t)).join('|'));
       tags = tags.filter(t => !!regex.exec(t));
     }
     return <div className="AnnoEditDialog">
       <div className="text">{uistate.curText.slice(start, end)}</div>
       Answers the question(s):
+      <ul>
+        {tempAnnotation.questions.map(text => <li>{text}</li>)}
+      </ul>
       <hr/>
-      <div>filter by tag: <input id="tag-filter" type="search" value={uistate.tagSearch} onInput={(evt) => {uistate.tagSearch = evt.target.value; return false;}} /></div>
-      <div><input id="new-question" ref={(elt) => {this.newQuestionElt = elt;}} /><button onClick={this.handleAddQuestion}>Add Question</button></div>
+      <div>filter by tag: <input id="tag-filter" type="search" value={annoDialogState.tagSearch} onInput={(evt) => {
+        annoDialogState.tagSearch = evt.target.value;
+        annoDialogState.curEditQuestionTags = splitWords(annoDialogState.tagSearch).join(' ');
+        return false;
+      }} /></div>
+      <div className="add-question-line">
+        <input id="new-question" value={annoDialogState.curEditQuestion} onChange={evt => {annoDialogState.curEditQuestion = evt.target.value;}} />
+        tags: <input value={annoDialogState.curEditQuestionTags} onChange={evt => {annoDialogState.curEditQuestionTags = evt.target.value;}} />
+        <button onClick={this.handleAddQuestion}>Add Question</button>
+      </div>
       {tags.map(tag => <div key={tag} className="annoTag">
         <h1>{tag}</h1>
         {annotationsStore.questions.filter(q => q.tags.indexOf(tag) !== -1).map((question, i) => <label key={i} className="anno-question">
-          <input type="checkbox" value={tempAnnotation.questions.indexOf(question.text) !== -1} onChange={evt => {
-            if (evt.target.value) {
+          <input type="checkbox" checked={tempAnnotation.questions.indexOf(question.text) !== -1} onChange={evt => {
+            let idx = tempAnnotation.questions.indexOf(question.text);
+            if (idx === -1) {
               tempAnnotation.questions.push(question.text);
             } else {
-              tempAnnotation.questions.splice(tempAnnotation.indexOf(question.text), 1);
+              tempAnnotation.questions.splice(idx, 1);
             }
           }} />
           {question.text}
           <div className="question-tags">{question.tags.join(', ')}</div>
         </label>)}
       </div>)}
-      <button className="btn btn-default" onClick={e => {uistate.tempAnnotation = null; }}>Cancel</button>
-      <button className="btn btn-primary" disabled={tempAnnotation.questions.length == 0} onClick={this.handleAddAnnotation}>Add annotation</button>
+      <div className="dialog-actions">
+        <button className="btn btn-default" onClick={e => {uistate.cancelAnnotation(); }}>Cancel</button>
+        <button className="btn btn-primary" disabled={tempAnnotation.questions.length == 0} onClick={this.handleAddAnnotation}>Add annotation</button>
+      </div>
     </div>;
   }
 });
@@ -134,7 +183,7 @@ const MainText = observer(['uistate', 'annotationsStore'], class MainText extend
     var startTextOffset = +range.startContainer.parentNode.getAttribute('data-offset') + range.startOffset;
     var endTextOffset = +range.endContainer.parentNode.getAttribute('data-offset') + range.endOffset;
     if (startTextOffset === range.endOffset) return;
-    uistate.tempAnnotation = {textIdx: uistate.curTextIdx, range: [startTextOffset, endTextOffset], questions: []};
+    uistate.startAnnotation([startTextOffset, endTextOffset]);
   };
 
   render() {
@@ -229,8 +278,8 @@ const App = observer(class App extends Component {
           <div className="col-md-9" id="text"><MainText /></div>
           <div className="col-md-3"><OverallQuestions/></div>
         </div>
-        {uistate.tempAnnotation && <div className="overlay" />}
-        {uistate.tempAnnotation && <AnnoEditDialog />}
+        {uistate.annoDialogState && <div className="overlay" />}
+        {uistate.annoDialogState && <AnnoEditDialog annoDialogState={uistate.annoDialogState} />}
         <textarea id="results" readOnly="readOnly" value={JSON.stringify(annotationsStore.toJson())} onClick={evt => evt.target.select()} />
         <button style={{position: 'fixed', right: 0, bottom: 0}} onClick={evt => {if (prompt("Type RESET to reset") === "RESET") {
           window.localStorage.clear(); window.location.reload();
