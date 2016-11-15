@@ -85,16 +85,16 @@ class UiState {
       annoDialogState: null,
       get curText() {return this.annotationsStore.texts[this.curTextIdx];},
       get curAnnotations() {
-        return this.annotationsStore.annotations.filter(ann => ann.textIdx == this.curTextIdx);
+        return this.annotationsStore.annotations.filter(ann => ann.textIdx === this.curTextIdx);
       },
     });
   }
 
   startAnnotation(range) {
     this.annoDialogState = new AnnoDialogState(
-      uistate,
-      annotationsStore,
-      {textIdx: uistate.curTextIdx, range: range, questions: []});
+      this,
+      this.annotationsStore,
+      {textIdx: this.curTextIdx, range: range, questions: []});
   }
 
   cancelAnnotation() {
@@ -123,7 +123,6 @@ const AnnoEditDialog = observer(['uistate', 'annotationsStore'], class AnnoEditD
 
   render() {
     let {uistate, annotationsStore} = this.props;
-    let {questions} = annotationsStore;
     let {annoDialogState} = this.props;
     let {tempAnnotation} = annoDialogState;
     let [start, end] = tempAnnotation.range;
@@ -136,7 +135,7 @@ const AnnoEditDialog = observer(['uistate', 'annotationsStore'], class AnnoEditD
       <div className="text">{uistate.curText.slice(start, end)}</div>
       Answers the question(s):
       <ul>
-        {tempAnnotation.questions.map(text => <li>{text}</li>)}
+        {tempAnnotation.questions.map(text => <li key={text}>{text}</li>)}
       </ul>
       <hr/>
       <div>filter by tag: <input id="tag-filter" type="search" value={annoDialogState.tagSearch} onInput={(evt) => {
@@ -166,7 +165,7 @@ const AnnoEditDialog = observer(['uistate', 'annotationsStore'], class AnnoEditD
       </div>)}
       <div className="dialog-actions">
         <button className="btn btn-default" onClick={e => {uistate.cancelAnnotation(); }}>Cancel</button>
-        <button className="btn btn-primary" disabled={tempAnnotation.questions.length == 0} onClick={this.handleAddAnnotation}>Add annotation</button>
+        <button className="btn btn-primary" disabled={tempAnnotation.questions.length === 0} onClick={this.handleAddAnnotation}>Add annotation</button>
       </div>
     </div>;
   }
@@ -270,9 +269,9 @@ const App = observer(class App extends Component {
       <Provider annotationsStore={annotationsStore} uistate={uistate}>
       <div className="container">
         <div>
-          <button onClick={() => {uistate.curTextIdx = uistate.curTextIdx - 1}} disabled={uistate.curTextIdx === 0}>&lt;</button>
+          <button onClick={() => {uistate.curTextIdx--}} disabled={uistate.curTextIdx === 0}>&lt;</button>
           Text {uistate.curTextIdx + 1} of {annotationsStore.texts.length}
-          <button onClick={() => {uistate.curTextIdx = uistate.curTextIdx + 1}} disabled={uistate.curTextIdx === annotationsStore.texts.length - 1}>&gt;</button>
+          <button onClick={() => {uistate.curTextIdx++}} disabled={uistate.curTextIdx === annotationsStore.texts.length - 1}>&gt;</button>
         </div>
         <div className="row">
           <div className="col-md-9" id="text"><MainText /></div>
