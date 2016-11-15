@@ -58,7 +58,7 @@ class UiState {
     this.annotationsStore = annotationsStore;
     extendObservable(this, {
       curTextIdx: 1,
-      tempAnnotation: {textIdx: 1, range: [4, 10], questions: []},//, question: initialQuestions[3]},
+      tempAnnotation: null,//{textIdx: 1, range: [4, 10], questions: []},//, question: initialQuestions[3]},
       tagSearch: '',
       get curText() {return this.annotationsStore.texts[this.curTextIdx];},
       get curAnnotations() {
@@ -71,6 +71,7 @@ class UiState {
 var uistate = new UiState(annotationsStore);
 window.uistate = uistate;
 
+var escapeRegExp = require('lodash.escaperegexp');
 
 const AnnoEditDialog = observer(['uistate', 'annotationsStore'], class AnnoEditDialog extends Component {
   handleAddQuestion = (evt) => {
@@ -78,25 +79,46 @@ const AnnoEditDialog = observer(['uistate', 'annotationsStore'], class AnnoEditD
     evt.preventDefault();
   };
 
+  handleAddAnnotation = evt => {
+    transaction(() => {
+      this.props.annotationsStore.annotations.push(this.props.uistate.tempAnnotation);
+      this.props.uistate.tempAnnotation = null;
+      this.props.tagSearch = '';
+    });
+  };
+
   render() {
     let {uistate, annotationsStore} = this.props;
     let {questions} = annotationsStore;
     let {tempAnnotation} = uistate;
     let [start, end] = tempAnnotation.range;
+    let tags = annotationsStore.allTags;
+    if (uistate.tagSearch) {
+      let regex = new RegExp(uistate.tagSearch.trim().split(/\s+/).map(t => escapeRegExp(t)).join('|'));
+      tags = tags.filter(t => !!regex.exec(t));
+    }
     return <div className="AnnoEditDialog">
       <div className="text">{uistate.curText.slice(start, end)}</div>
       Answers the question(s):
       <hr/>
       <div>filter by tag: <input id="tag-filter" type="search" value={uistate.tagSearch} onInput={(evt) => {uistate.tagSearch = evt.target.value; return false;}} /></div>
       <div><input id="new-question" ref={(elt) => {this.newQuestionElt = elt;}} /><button onClick={this.handleAddQuestion}>Add Question</button></div>
-      {uistate.tagSearch}
-      {annotationsStore.allTags.map(tag => <div key={tag} className="annoTag">
+      {tags.map(tag => <div key={tag} className="annoTag">
         <h1>{tag}</h1>
-        {annotationsStore.questions.filter(q => q.tags.indexOf(tag) !== -1).map((question, i) => <div key={i}>
+        {annotationsStore.questions.filter(q => q.tags.indexOf(tag) !== -1).map((question, i) => <label key={i} className="anno-question">
+          <input type="checkbox" value={tempAnnotation.questions.indexOf(question.text) !== -1} onChange={evt => {
+            if (evt.target.value) {
+              tempAnnotation.questions.push(question.text);
+            } else {
+              tempAnnotation.questions.splice(tempAnnotation.indexOf(question.text), 1);
+            }
+          }} />
           {question.text}
-          ({question.tags.join(', ')})
-        </div>)}
+          <div className="question-tags">{question.tags.join(', ')}</div>
+        </label>)}
       </div>)}
+      <button className="btn btn-default" onClick={e => {uistate.tempAnnotation = null; }}>Cancel</button>
+      <button className="btn btn-primary" disabled={tempAnnotation.questions.length == 0} onClick={this.handleAddAnnotation}>Add annotation</button>
     </div>;
   }
 });
@@ -112,7 +134,7 @@ const MainText = observer(['uistate', 'annotationsStore'], class MainText extend
     var startTextOffset = +range.startContainer.parentNode.getAttribute('data-offset') + range.startOffset;
     var endTextOffset = +range.endContainer.parentNode.getAttribute('data-offset') + range.endOffset;
     if (startTextOffset === range.endOffset) return;
-    uistate.tempAnnotation = {textIdx: uistate.curTextIdx, range: [startTextOffset, endTextOffset]};
+    uistate.tempAnnotation = {textIdx: uistate.curTextIdx, range: [startTextOffset, endTextOffset], questions: []};
   };
 
   render() {
@@ -207,6 +229,7 @@ const App = observer(class App extends Component {
           <div className="col-md-9" id="text"><MainText /></div>
           <div className="col-md-3"><OverallQuestions/></div>
         </div>
+        {uistate.tempAnnotation && <div className="overlay" />}
         {uistate.tempAnnotation && <AnnoEditDialog />}
         <textarea id="results" readOnly="readOnly" value={JSON.stringify(annotationsStore.toJson())} onClick={evt => evt.target.select()} />
         <button style={{position: 'fixed', right: 0, bottom: 0}} onClick={evt => {if (prompt("Type RESET to reset") === "RESET") {
