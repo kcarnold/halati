@@ -17,6 +17,7 @@ var initialQuestions = [
 
 class AnnotationStore {
   constructor() {
+    this.__version__ = 2;
     extendObservable(this, {
       texts: [],
       questions: initialQuestions,
@@ -34,8 +35,10 @@ class AnnotationStore {
   fromJson(json) {
     transaction(() => {
       this.texts = json.texts;
-      this.questions = json.questions;
-      this.annotations = json.annotations;
+      if (json.__version__ === 2) {
+        this.questions = json.questions;
+        this.annotations = json.annotations;
+      }
     });
   };
 
