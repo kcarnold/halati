@@ -1,65 +1,46 @@
 import React, { Component } from 'react';
 import {extendObservable, observable, action, autorun, toJS, transaction} from 'mobx';
-import {observer} from 'mobx-react';
+import {observer, Provider} from 'mobx-react';
+const d3 = require('d3');//import d3 from 'd3';
+window.d3 = d3;
 
-var colors = ['#8dd3c7','#ffffb3','#bebada','#fb8072','#80b1d3','#fdb462','#b3de69','#fccde5','#d9d9d9','#bc80bd']; // colorbrewer set3
+import {formattedRanges, addFormatting} from './styledRanges';
 
-class Topic {
-  constructor(name, color, ranges) {
-    extendObservable(this, {
-      name: name,
-      color: color,
-      ranges: ranges || []
-    });
-  }
-}
+var colors = d3.schemeCategory10; //['#8dd3c7','#ffffb3','#bebada','#fb8072','#80b1d3','#fdb462','#b3de69','#fccde5','#d9d9d9','#bc80bd']; // colorbrewer set3
 
-function makeEmptyRanges(n) {
-  let ranges = [];
-  for (let i=0; i<n; i++) ranges.push([]);
-  return ranges;
-}
-
-class Question {
-  constructor(id, text) {
-    this.id = id;
-    this.text = text;
-    extendObservable(this, {
-      responses: []
-    });
-  }
-}
+var initialQuestions = [
+        {text: "What kind of meal did you come for?", tags: ['food', 'occasion']},
+        {text: "What kind of food were you hoping to get?", tags: ['food', 'expectations']},
+        {text: "On what day of the week did you visit?", tags: ['occasion']},
+        {text: "When did you come?", tags: ['occasion']}
+      ];
 
 class AnnotationStore {
   constructor() {
     extendObservable(this, {
       texts: [],
-      topics: [],
-      questions: [],
-      lastColorIdx: 0,
+      questions: initialQuestions,
+      annotations: [],
+      get allTags() {
+        var tags = d3.set();
+        this.questions.forEach(q => q.tags.forEach(t => tags.add(t)));
+        var tagValues = tags.values();
+        tagValues.sort();
+        return tagValues;
+      }
     });
   };
 
   fromJson(json) {
     transaction(() => {
       this.texts = json.texts;
-      this.topics = json.topics || [];
       this.questions = json.questions;
-      this.lastColorIdx = json.lastColorIdx || 0;
-      this.questions.forEach(question => {
-        question.responses = question.responses || observable(Array(this.texts.length));
-      });
+      this.annotations = json.annotations;
     });
   };
 
   toJson() {
     return toJS(this);
-  };
-
-  nextColor() {
-    var idx = this.lastColorIdx;
-    this.lastColorIdx = idx + 1;
-    return colors[idx % colors.length];
   };
 }
 
@@ -68,145 +49,132 @@ window.annotationsStore = annotationsStore;
 if (window.localStorage.annotations){
   annotationsStore.fromJson(JSON.parse(window.localStorage.annotations));
 }
+autorun(function() {
+  window.localStorage.annotations = JSON.stringify(annotationsStore.toJson());
+});
+
+function splitWords(x) {
+  return x.trim().split(/\s+/);
+}
+
+class AnnoDialogState {
+  constructor(uistate, annotationsStore, tempAnnotation) {
+    extendObservable(this, {
+      uistate: uistate,
+      annotationsStore: annotationsStore,
+      tempAnnotation,
+      tagSearch: '',
+      curEditQuestion: '',
+      curEditQuestionTags: '',
+    });
+  }
+
+  addAnnotation() {
+    transaction(() => {
+      this.annotationsStore.annotations.push(this.tempAnnotation);
+      this.uistate.annoDialogState = null;
+    });
+  }
+}
 
 class UiState {
   constructor(annotationsStore) {
     this.annotationsStore = annotationsStore;
     extendObservable(this, {
-      curTextIdx: 0,
+      curTextIdx: 1,
+      annoDialogState: null,
       get curText() {return this.annotationsStore.texts[this.curTextIdx];},
-      activeTopic: 0,
-      setActiveTopic: action(function(i) {
-        this.activeTopic = i;
-      })
+      get curAnnotations() {
+        return this.annotationsStore.annotations.filter(ann => ann.textIdx === this.curTextIdx);
+      },
     });
+  }
+
+  startAnnotation(range) {
+    this.annoDialogState = new AnnoDialogState(
+      this,
+      this.annotationsStore,
+      {textIdx: this.curTextIdx, range: range, questions: []});
+  }
+
+  cancelAnnotation() {
+    this.annoDialogState = null;
   }
 }
 
 var uistate = new UiState(annotationsStore);
 window.uistate = uistate;
 
+var escapeRegExp = require('lodash.escaperegexp');
 
-autorun(function() {
-  var json = JSON.stringify(annotationsStore.toJson());
-  window.localStorage.annotations = json;
-});
-
-
-function formattedRanges(ranges) {
-  var offset = 0;
-  return ranges.map(({text, style}, i) => <span key={i} style={style} data-offset={(offset += text.length) - text.length}>{text}</span>);
-}
-
-function joinStyle(a, b) { return {...a, ...b};}
-
-function addFormatting(existingRanges, start, end, fmt) {
-  let res = [];
-  for (let existingRangeIdx = 0; existingRangeIdx < existingRanges.length; existingRangeIdx++) {
-    let range = existingRanges[existingRangeIdx];
-    let textLen = range.text.length;
-    if (start > 0) {
-      // before start.
-      if (textLen <= start) {
-        // Pass through unchanged text.
-        res.push(range);
-      } else {
-        // Break apart this range.
-        res.push({text: range.text.slice(0, start), style: range.style});
-        if (end < textLen) {
-          // Range also ends within this block.
-          res.push({text: range.text.slice(start, end), style: joinStyle(range.style, fmt)});
-          res.push({text: range.text.slice(end), style: range.style});
-        } else {
-          res.push({text: range.text.slice(start), style: joinStyle(range.style, fmt)});
-        }
-      }
-    } else if (end > 0) {
-      // within range.
-      if (textLen <= end) {
-        res.push({text: range.text, style: joinStyle(range.style, fmt)});
-      } else {
-        // Break apart.
-        if (end > 0) {
-          res.push({text: range.text.slice(0, end), style: joinStyle(range.style, fmt)});
-        }
-        res.push({text: range.text.slice(end), style: range.style});
-      }
-    } else {
-      // Pass through remaining text.
-      res.push(range);
-    }
-    start -= textLen;
-    end -= textLen;
-  }
-  return res;
-}
-
-const TopicInstance = observer(class TopicInstance extends Component {
-  render() {
-    return <div><button onClick={this.props.onRemove}>x</button> {this.props.text}</div>;
-  }
-});
-
-const SidebarTopic = observer(class SidebarTopic extends Component {
-  handleClick = () => {
-    uistate.setActiveTopic(this.props.idx);
+const AnnoEditDialog = observer(['uistate', 'annotationsStore'], class AnnoEditDialog extends Component {
+  handleAddQuestion = (evt) => {
+    let {annoDialogState, annotationsStore, uistate} = this.props;
+    let text = annoDialogState.curEditQuestion;
+    let tags = splitWords(annoDialogState.curEditQuestionTags);
+    annotationsStore.questions.push({text, tags});
+    annoDialogState.tempAnnotation.questions.push(text);
+    evt.preventDefault();
   };
 
-  handleEditTitle = () => {
-    let newName = prompt('New name for this topic', this.props.topic.name);
-    if (newName.length)
-      this.props.topic.name = newName;
-  };
-
-  handleRemove = (evt) => {
-    if (!confirm("Are you sure you want to remove the topic \""+this.props.topic.name+"\"?"))
-      return;
-    if (uistate.activeTopic >= this.props.idx) {
-      uistate.setActiveTopic(uistate.activeTopic - 1);
-    }
-    annotationsStore.topics.splice(this.props.idx, 1);
-    evt.stopPropagation();
+  handleAddAnnotation = evt => {
+    this.props.annoDialogState.addAnnotation();
   };
 
   render() {
-    let {isActive, topic, curTextIdx} = this.props;
-    return (
-      <div className={"sidebarGroup " + (isActive ? "active" : "")}>
-        <div
-          className="topic"
-          style={{background: topic.color}}
-          onClick={this.handleClick}>
-          <span>{topic.name}</span>
-          <button onClick={this.handleEditTitle}>{FA('edit')}</button>
-          <button onClick={this.handleRemove}>{FA('remove')}</button>
-        </div>
+    let {uistate, annotationsStore} = this.props;
+    let {annoDialogState} = this.props;
+    let {tempAnnotation} = annoDialogState;
+    let [start, end] = tempAnnotation.range;
+    let tags = annotationsStore.allTags;
+    if (annoDialogState.tagSearch) {
+      let regex = new RegExp(splitWords(annoDialogState.tagSearch).map(t => escapeRegExp(t)).join('|'));
+      tags = tags.filter(t => !!regex.exec(t));
+    }
+    let preText = '\u2026'+uistate.curText.slice(Math.max(0, start - 10), start);
+    let postText = uistate.curText.slice(end, end+10)+'\u2026';
+    return <div className="AnnoEditDialog">
       <div>
-        {topic.ranges[curTextIdx].map(([start, end], i) => <TopicInstance
-          key={i}
-          onRemove={() => topic.ranges[curTextIdx].splice(i, 1)}
-          text={uistate.curText.slice(start, end)} />)}
+        Shift beginning: <button className="btn btn-default btn-xs" onClick={() => tempAnnotation.range[0]--}>{"<"}</button><button className="btn btn-default btn-xs" onClick={() => tempAnnotation.range[0]++}>{">"}</button>{' '}
+        Shift end: <button className="btn btn-default btn-xs" onClick={() => tempAnnotation.range[1]--}>{"<"}</button><button className="btn btn-default btn-xs" onClick={() => tempAnnotation.range[1]++}>{">"}</button>
       </div>
-      </div>);
-  }
-});
-
-const Sidebar = observer(class Sidebar extends Component {
-  handleAddTopic = () => {
-    this.props.annotationsStore.topics.push(new Topic(prompt("Name for this topic?"), this.props.annotationsStore.nextColor(), makeEmptyRanges(this.props.annotationsStore.texts.length)));
-    uistate.setActiveTopic(this.props.topics.length - 1);
-  };
-
-  render() {
-    let {annotationsStore, activeTopic, curTextIdx} = this.props;
-    return <div>
-      <div>Topics:</div>
-      {annotationsStore.topics.map((topic, i) => <SidebarTopic
-      key={i}
-      idx={i} isActive={i === activeTopic}
-      topic={topic} curTextIdx={curTextIdx} />)}
-      <button onClick={this.handleAddTopic}>{FA('plus')} Add Topic</button>
-
+      <div className="text">{preText}<span className="curAnnoText">{uistate.curText.slice(start, end)}</span>{postText}</div>
+      Answers the question(s):
+      <ul>
+        {tempAnnotation.questions.map(text => <li key={text}>{text}</li>)}
+      </ul>
+      <hr/>
+      <div>filter by tag: <input id="tag-filter" type="search" value={annoDialogState.tagSearch} onInput={(evt) => {
+        annoDialogState.tagSearch = evt.target.value;
+        annoDialogState.curEditQuestionTags = splitWords(annoDialogState.tagSearch).join(' ');
+        return false;
+      }} /></div>
+      <div className="add-question-line">
+        <input id="new-question" value={annoDialogState.curEditQuestion} onChange={evt => {annoDialogState.curEditQuestion = evt.target.value;}} />
+        tags: <input value={annoDialogState.curEditQuestionTags} onChange={evt => {annoDialogState.curEditQuestionTags = evt.target.value;}} />
+        <button className="btn btn-primary btn-sm" onClick={this.handleAddQuestion}>Add Question</button>
+      </div>
+      <div className="existing-questions">
+      {tags.map(tag => <div key={tag} className="annoTag">
+        <h1>{tag}</h1>
+        {annotationsStore.questions.filter(q => q.tags.indexOf(tag) !== -1).map((question, i) => <label key={i} className="anno-question">
+          <input type="checkbox" checked={tempAnnotation.questions.indexOf(question.text) !== -1} onChange={evt => {
+            let idx = tempAnnotation.questions.indexOf(question.text);
+            if (idx === -1) {
+              tempAnnotation.questions.push(question.text);
+            } else {
+              tempAnnotation.questions.splice(idx, 1);
+            }
+          }} />
+          {question.text}
+          <div className="question-tags">{question.tags.join(', ')}</div>
+        </label>)}
+      </div>)}
+      </div>
+      <div className="dialog-actions">
+        <button className="btn btn-default" onClick={e => {uistate.cancelAnnotation(); }}>Cancel</button>
+        <button className="btn btn-primary" disabled={tempAnnotation.questions.length === 0} onClick={this.handleAddAnnotation}>Add annotation</button>
+      </div>
     </div>;
   }
 });
@@ -215,15 +183,23 @@ function FA(name) {
   return <i className={"fa fa-"+name} />;
 }
 
-const MainText = observer(class MainText extends Component {
+const MainText = observer(['uistate', 'annotationsStore'], class MainText extends Component {
+  onMouseUp = (evt) => {
+    let {uistate} = this.props;
+    var range = window.getSelection().getRangeAt(0);
+    var startTextOffset = +range.startContainer.parentNode.getAttribute('data-offset') + range.startOffset;
+    var endTextOffset = +range.endContainer.parentNode.getAttribute('data-offset') + range.endOffset;
+    if (startTextOffset === range.endOffset) return;
+    uistate.startAnnotation([startTextOffset, endTextOffset]);
+  };
+
   render() {
     var annotated = [{text: uistate.curText, style: {}}];
-    this.props.annotationsStore.topics.forEach(function({name, color, ranges}) {
-        ranges[uistate.curTextIdx].forEach(function([start, end]) {
-          annotated = addFormatting(annotated, start, end, {background: color});
-        });
+    this.props.uistate.curAnnotations.forEach(function({name, range}, i) {
+        let [start, end] = range;
+        annotated = addFormatting(annotated, start, end, {background: colors[i]});
       });
-    return <div className="real-text">{formattedRanges(annotated)}</div>;
+    return <div className="real-text" onMouseUp={this.onMouseUp}>{formattedRanges(annotated)}</div>;
   }
 });
 
@@ -276,55 +252,47 @@ function simplifyRanges(text, ranges) {
   return newRanges;
 }
 
+const OverallQuestions = observer(['annotationsStore'], class OverallQuestions extends Component {
+  render() {
+    let {annotationsStore} = this.props;
+    return null;
+    // return <div>
+    //   {annotationsStore.questions.map((question, i) => <div key={question.id}>
+    //     <label title={question.instructions}>{question.text + " "}
+    //       <i className="fa fa-info-circle" title={question.instructions} /><br/>
+    //       <input onChange={evt => {question.responses[curTextIdx] = +evt.target.value}} type="number" min={question.min} max={question.max} value={question.responses[curTextIdx] || ""} />
+    //     </label></div>)}
+    //   </div>;
+  }
+});
+
 
 const App = observer(class App extends Component {
-  onMouseUp(evt) {
-    var range = window.getSelection().getRangeAt(0);
-    var startTextOffset = +range.startContainer.parentNode.getAttribute('data-offset') + range.startOffset;
-    var endTextOffset = +range.endContainer.parentNode.getAttribute('data-offset') + range.endOffset;
-    if (startTextOffset === range.endOffset) return;
-    if (uistate.activeTopic >= annotationsStore.topics.length) {
-      alert("Create a topic first, then select some text.")
-      return;
-    }
-    var ranges = annotationsStore.topics[uistate.activeTopic].ranges[uistate.curTextIdx];
-    ranges.push([startTextOffset, endTextOffset]);
-    annotationsStore.topics[uistate.activeTopic].ranges[uistate.curTextIdx] = simplifyRanges(uistate.curText, ranges);
-    window.getSelection().removeAllRanges();
-  }
-
   render() {
     let {curTextIdx} = uistate;
     if (annotationsStore.texts.length === 0) {
       return <RequestDatafile />;
     }
     return (
+      <Provider annotationsStore={annotationsStore} uistate={uistate}>
       <div className="container">
         <div>
-          <button onClick={() => {uistate.curTextIdx = uistate.curTextIdx - 1}} disabled={uistate.curTextIdx === 0}>&lt;</button>
+          <button onClick={() => {uistate.curTextIdx--}} disabled={uistate.curTextIdx === 0}>&lt;</button>
           Text {uistate.curTextIdx + 1} of {annotationsStore.texts.length}
-          <button onClick={() => {uistate.curTextIdx = uistate.curTextIdx + 1}} disabled={uistate.curTextIdx === annotationsStore.texts.length - 1}>&gt;</button>
+          <button onClick={() => {uistate.curTextIdx++}} disabled={uistate.curTextIdx === annotationsStore.texts.length - 1}>&gt;</button>
         </div>
         <div className="row">
-          <div className="col-md-6" id="text" onMouseUp={this.onMouseUp}><MainText annotationsStore={annotationsStore} />
-          </div>
-          <div className="col-md-3" id="sidebar">
-            <Sidebar annotationsStore={annotationsStore} topics={annotationsStore.topics} activeTopic={uistate.activeTopic} curTextIdx={uistate.curTextIdx} />
-          </div>
-          <div className="col-md-3">
-            <div>Overall questions:</div>
-            {annotationsStore.questions.map((question, i) => <div key={question.id}>
-              <label title={question.instructions}>{question.text + " "}
-                <i className="fa fa-info-circle" title={question.instructions} /><br/>
-                <input onChange={evt => {question.responses[curTextIdx] = +evt.target.value}} type="number" min={question.min} max={question.max} value={question.responses[curTextIdx] || ""} />
-              </label></div>)}
-          </div>
+          <div className="col-md-9" id="text"><MainText /></div>
+          <div className="col-md-3"><OverallQuestions/></div>
         </div>
+        {uistate.annoDialogState && <div className="overlay" />}
+        {uistate.annoDialogState && <AnnoEditDialog annoDialogState={uistate.annoDialogState} />}
         <textarea id="results" readOnly="readOnly" value={JSON.stringify(annotationsStore.toJson())} onClick={evt => evt.target.select()} />
         <button style={{position: 'fixed', right: 0, bottom: 0}} onClick={evt => {if (prompt("Type RESET to reset") === "RESET") {
           window.localStorage.clear(); window.location.reload();
         }}}>Reset</button>
       </div>
+      </Provider>
     );
   }
 });
