@@ -7,12 +7,13 @@ body {
 
 #text {
   font-size: 14pt;
-  line-height: 1.5;
+  line-height: 2;
   background: #eee;
   border: 1px solid black;
   position: relative;
   padding: 5px;
   white-space: pre-line;
+  overflow: hidden;
 }
 
 .hl-layer {
@@ -119,4 +120,12 @@ input#new-question {
 
 span.curAnnoText {
     background: yellowgreen;
+}
+
+span.annotation {
+    position: absolute;
+    font-size: 10px;
+    background: transparent;
+    transform: translate(0, -9px);
+    white-space: nowrap;
 }

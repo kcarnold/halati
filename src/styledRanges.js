@@ -5,9 +5,9 @@ export function formattedRanges(ranges) {
   return ranges.map(({text, style}, i) => <span key={i} style={style} data-offset={(offset += text.length) - text.length}>{text}</span>);
 }
 
-export function joinStyle(a, b) { return {...a, ...b};}
+export function defaultJoinStyle(a, b) { return {...a, ...b};}
 
-export function addFormatting(existingRanges, start, end, fmt) {
+export function addFormatting(existingRanges, start, end, fmt, joinStyle=defaultJoinStyle) {
   let res = [];
   for (let existingRangeIdx = 0; existingRangeIdx < existingRanges.length; existingRangeIdx++) {
     let range = existingRanges[existingRangeIdx];

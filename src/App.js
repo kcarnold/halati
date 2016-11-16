@@ -84,7 +84,7 @@ class UiState {
   constructor(annotationsStore) {
     this.annotationsStore = annotationsStore;
     extendObservable(this, {
-      curTextIdx: 1,
+      curTextIdx: 0,
       annoDialogState: null,
       get curText() {return this.annotationsStore.texts[this.curTextIdx];},
       get curAnnotations() {
@@ -192,17 +192,44 @@ const MainText = observer(['uistate', 'annotationsStore'], class MainText extend
     var range = window.getSelection().getRangeAt(0);
     var startTextOffset = +range.startContainer.parentNode.getAttribute('data-offset') + range.startOffset;
     var endTextOffset = +range.endContainer.parentNode.getAttribute('data-offset') + range.endOffset;
-    if (startTextOffset === range.endOffset) return;
+    if (startTextOffset === endTextOffset) return;
     uistate.startAnnotation([startTextOffset, endTextOffset]);
   };
 
+  onClickAnnotation(annotations) {
+    if (annotations.length !== 1)
+      return;
+    let idx = this.props.annotationsStore.annotations.indexOf(annotations[0]);
+    if (idx === -1) debugger
+    if (confirm(`Remove the annotation "${annotations[0].questions.join(', ')}"?`)) {
+      this.props.annotationsStore.annotations.splice(idx, 1);
+    }
+  }
+
   render() {
     var annotated = [{text: uistate.curText, style: {}}];
-    this.props.uistate.curAnnotations.forEach(function({name, range}, i) {
-        let [start, end] = range;
-        annotated = addFormatting(annotated, start, end, {background: colors[i]});
+    function joinStyle(prev, cur) {
+      let res = {...prev, ...cur};
+      if (prev.color && cur.color) {
+        res.color = d3.interpolateCubehelix(prev.color, cur.color)(.5);
+      }
+      if (prev.annotations && cur.annotations) {
+        res.annotations = prev.annotations.concat(cur.annotations);
+      }
+      return res;
+    }
+    this.props.uistate.curAnnotations.forEach(function(annotation, i) {
+        let [start, end] = annotation.range;
+        annotated = addFormatting(annotated, start, end, {color: colors[i], annotations: [annotation]}, joinStyle);
       });
-    return <div className="real-text" onMouseUp={this.onMouseUp}>{formattedRanges(annotated)}</div>;
+    let offset = 0;
+    return <div className="real-text" onMouseUp={this.onMouseUp}>{
+      annotated.map(({text, style}, i) => <span
+        key={i} style={{background: style.color}} data-offset={(offset += text.length) - text.length} onClick={this.onClickAnnotation.bind(this, style.annotations)}>
+        <span className="annotation">{(style.annotations || []).map(x => x.questions.join(', '))}</span>
+        {text}
+        </span>)
+    }</div>;
   }
 });
 
