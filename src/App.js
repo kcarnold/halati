@@ -10,19 +10,15 @@ var colors = d3.schemeCategory10; //['#8dd3c7','#ffffb3','#bebada','#fb8072','#8
 
 
 export class State {
-  constructor(text, changeCallback) {
+  constructor(text) {
     M.extendObservable(this, {
       text: text,
       annotations: [],
     });
-
-    M.autorun(() => {
-      changeCallback(this.annotations);
-    })
   }
 }
 
-export const App = observer(class App extends Component {
+export const AnnotatableText = observer(class AnnotatableText extends Component {
   onMouseUp = (evt) => {
     let {state} = this.props;
     var range = window.getSelection().getRangeAt(0);
@@ -66,6 +62,64 @@ export const App = observer(class App extends Component {
         {text}
         </span>)
     }</div>;
+  }
+});
+
+let allStates = M.observable({});
+function getStateFor(page, which, text) {
+  let name = `${page}-${which}`;
+  if (!allStates[name])
+    allStates[name] = new State(text);
+  return allStates[name];
+}
+
+class RatingOutput {
+  constructor() {
+    M.extendObservable(this, {
+      data: M.map(),
+    });
+  }
+}
+
+let ratings = new RatingOutput();
+window.ratings = ratings;
+
+export const App = observer(class App extends Component {
+  state = {pageNum: 0};
+
+  render() {
+    let {data} = this.props;
+    let {pages, attrs} = data;
+    let {pageNum} = this.state;
+    let [textA, textB] = pages[pageNum];
+    return <div className="App">
+      <div className="reviews">
+        <AnnotatableText state={getStateFor(pageNum, 0, textA)} />
+        <AnnotatableText state={getStateFor(pageNum, 1, textB)} />
+      </div>
+
+      <div>Which of these two has more detail about the...</div>
+
+      <table>
+        <thead><tr><th></th><th>A</th><th>B</th></tr></thead>
+        <tbody>
+          {attrs.map((attr, i) => <tr key={attr}>
+            <td>{attr}</td>
+            {['A', 'B'].map(x => <td key={x}>
+              <input type="radio" name={`${i}-A`}
+                checked={ratings.data.get(`${attr}-${pageNum}`) === x}
+                onChange={() => {console.log(attr, x); ratings.data.set(`${attr}-${pageNum}`, x);}} />
+            </td>)}</tr>)}
+        </tbody>
+      </table>
+
+      {pageNum === pages.length - 1
+        ? <button type="submit">Submit results</button>
+        : <button onClick={() => {this.setState({pageNum: pageNum+1});}}>Next</button>}
+
+      <input readOnly={true} value={JSON.stringify(allStates)} />
+      <input readOnly={true} value={JSON.stringify(ratings.data)} />
+    </div>;
   }
 });
 
