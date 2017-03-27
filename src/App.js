@@ -135,8 +135,7 @@ export const App = observer(class App extends Component {
          : <button onClick={() => {this.setState({pageNum: pageNum+1});}}>Next</button>}
       </div>
 
-      <input type="hidden" readOnly={true} value={JSON.stringify(allStates)} />
-      <input type="hidden" readOnly={true} value={JSON.stringify(ratings.data)} />
+      <input type="hidden" readOnly={true} name="results" value={JSON.stringify({highlights: allStates, ratings: ratings.data})} />
 
       <div style={{display: pageNum === pages.length - 1 ? 'block' : 'none'}}>
         <p>We&#39;re just developing this HIT, so we&#39;d appreciate your feedback: are the instructions clear? Is the payment fair? Did it feel too long or short? Any technical difficulties? Anything else?</p>
