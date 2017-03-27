@@ -120,12 +120,30 @@ export const App = observer(class App extends Component {
           {attrs.map((attr, i) => <tr key={attr}>
             <td>{attr}</td>
             {['A', 'neither', 'B'].map(x => <td key={x}>
-              <input type="radio" name={`${i}-A`}
+              <input type="radio"
                 checked={ratings.data.get(`${attr}-${pageNum}`) === x}
                 onChange={() => {console.log(attr, x); ratings.data.set(`${attr}-${pageNum}`, x);}} />
             </td>)}</tr>)}
+          <tr><td colspan="4"><br/>Which is better written?</td></tr>
+          <tr><td></td>
+            {['A', null, 'B'].map(x => <td key={x+''}>
+              {x && <input type="radio"
+                checked={ratings.data.get(`written-${pageNum}`) === x}
+                onChange={() => {console.log('written', x); ratings.data.set(`written-${pageNum}`, x);}} />}
+            </td>)}
+          </tr>
+          <tr><td colspan="4"><br/>Which is higher quality overall?</td></tr>
+          <tr><td></td>
+            {['A', null, 'B'].map(x => <td key={x+''}>
+              {x && <input type="radio"
+                checked={ratings.data.get(`overall-${pageNum}`) === x}
+                onChange={() => {console.log('overall', x); ratings.data.set(`overall-${pageNum}`, x);}} />}
+            </td>)}
+          </tr>
         </tbody>
       </table>
+
+      <br/><br/>
 
       <div>
         <button onClick={(evt) => {this.setState({pageNum: pageNum - 1}); evt.preventDefault();}} disabled={pageNum===0}>Prev</button>
