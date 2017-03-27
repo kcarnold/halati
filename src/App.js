@@ -4,6 +4,7 @@ import {observer} from 'mobx-react';
 const d3 = require('d3');//import d3 from 'd3';
 window.d3 = d3;
 
+import Consent from './Consent';
 import {addFormatting} from './styledRanges';
 
 // var colors = d3.schemeCategory10; //['#8dd3c7','#ffffb3','#bebada','#fb8072','#80b1d3','#fdb462','#b3de69','#fccde5','#d9d9d9','#bc80bd']; // colorbrewer set3
@@ -85,13 +86,17 @@ let ratings = new RatingOutput();
 window.ratings = ratings;
 
 export const App = observer(class App extends Component {
-  state = {pageNum: 0};
+  state = {pageNum: 0, consented: false};
 
   render() {
     let {data} = this.props;
     let {pages, attrs} = data;
-    let {pageNum} = this.state;
+    let {pageNum, consented} = this.state;
     let [textA, textB] = pages[pageNum];
+
+    if (!consented) {
+      return <Consent onConsented={() => {this.setState({consented: true});}} />;
+    }
 
     return <div className="App">
       <h1>Instructions</h1>
