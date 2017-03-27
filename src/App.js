@@ -115,11 +115,11 @@ export const App = observer(class App extends Component {
       <div>Which of these two has more detail about the...</div>
 
       <table className="ratings-table">
-        <thead><tr><th></th><th>A</th><th>B</th></tr></thead>
+        <thead><tr><th></th><th>A</th><th>neither</th><th>B</th></tr></thead>
         <tbody>
           {attrs.map((attr, i) => <tr key={attr}>
             <td>{attr}</td>
-            {['A', 'B'].map(x => <td key={x}>
+            {['A', 'neither', 'B'].map(x => <td key={x}>
               <input type="radio" name={`${i}-A`}
                 checked={ratings.data.get(`${attr}-${pageNum}`) === x}
                 onChange={() => {console.log(attr, x); ratings.data.set(`${attr}-${pageNum}`, x);}} />
