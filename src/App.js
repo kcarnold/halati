@@ -128,11 +128,11 @@ export const App = observer(class App extends Component {
       </table>
 
       <div>
-        <button onClick={() => {this.setState({pageNum: pageNum - 1});}} disabled={pageNum===0}>Prev</button>
+        <button onClick={(evt) => {this.setState({pageNum: pageNum - 1}); evt.preventDefault();}} disabled={pageNum===0}>Prev</button>
         Comparison {pageNum + 1} of {pages.length}
         {pageNum===pages.length - 1
          ? <div>Last one! See below.</div>
-         : <button onClick={() => {this.setState({pageNum: pageNum+1});}}>Next</button>}
+         : <button onClick={(evt) => {this.setState({pageNum: pageNum + 1}); evt.preventDefault();}}>Next</button>}
       </div>
 
       <input type="hidden" readOnly={true} name="results" value={JSON.stringify({highlights: allStates, ratings: ratings.data})} />
@@ -140,7 +140,6 @@ export const App = observer(class App extends Component {
       <div style={{display: pageNum === pages.length - 1 ? 'block' : 'none'}}>
         <p>We&#39;re just developing this HIT, so we&#39;d appreciate your feedback: are the instructions clear? Is the payment fair? Did it feel too long or short? Any technical difficulties? Anything else?</p>
         <textarea cols="80" name="feedback" placeholder="optional feedback" rows="4"></textarea>
-        <button type="submit" disabled={pageNum !== pages.length - 1}>Submit results</button>
       </div>
     </div>;
   }

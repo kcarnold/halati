@@ -54,7 +54,7 @@ const Consent = ({onConsented}) => {
           <li>If you have questions about your rights as a research participant.</li>
         </ul>
         <hr />
-        <p><strong>If you consent to participate, click this button:</strong> <button onClick={evt => {onConsented();}}>Next</button></p>
+        <p><strong>If you consent to participate, click this button:</strong> <button onClick={evt => {onConsented(); evt.preventDefault();}}>Next</button></p>
       </section>
     );
 };
