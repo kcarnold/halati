@@ -26,6 +26,11 @@ span.curAnnoText {
 }
 
 .ratings-table th, .ratings-table td {
-  min-width: 50px;
+  width: 70px;
   text-align: center;
+}
+
+
+td:first-child {
+    text-align: left;
 }
