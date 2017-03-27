@@ -20,7 +20,12 @@ span.curAnnoText {
   width: 80%;
 }
 
-.reviews .annotated-text {
+.reviews > div {
   flex: 1 1 auto;
   margin: 15px;
+}
+
+.ratings-table th, .ratings-table td {
+  min-width: 50px;
+  text-align: center;
 }

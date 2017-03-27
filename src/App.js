@@ -6,7 +6,7 @@ window.d3 = d3;
 
 import {addFormatting} from './styledRanges';
 
-var colors = d3.schemeCategory10; //['#8dd3c7','#ffffb3','#bebada','#fb8072','#80b1d3','#fdb462','#b3de69','#fccde5','#d9d9d9','#bc80bd']; // colorbrewer set3
+// var colors = d3.schemeCategory10; //['#8dd3c7','#ffffb3','#bebada','#fb8072','#80b1d3','#fdb462','#b3de69','#fccde5','#d9d9d9','#bc80bd']; // colorbrewer set3
 
 
 export class State {
@@ -76,7 +76,7 @@ function getStateFor(page, which, text) {
 class RatingOutput {
   constructor() {
     M.extendObservable(this, {
-      data: M.map(),
+      data: new M.ObservableMap(),
     });
   }
 }
@@ -92,15 +92,24 @@ export const App = observer(class App extends Component {
     let {pages, attrs} = data;
     let {pageNum} = this.state;
     let [textA, textB] = pages[pageNum];
+
     return <div className="App">
+      <h1>Instructions</h1>
+      <ol>
+        <li><b>Read</b> the two texts below. </li>
+        <li><b>Highlight</b> all <em>factual details</em> that each text gives by <b>selecting a few words with your mouse</b>. (Click any highlight to remove it.)</li>
+        <li><b>Rate</b> the two reviews according to the rubric below.</li>
+      </ol>
+
+
       <div className="reviews">
-        <AnnotatableText state={getStateFor(pageNum, 0, textA)} />
-        <AnnotatableText state={getStateFor(pageNum, 1, textB)} />
+        <div>A<AnnotatableText state={getStateFor(pageNum, 0, textA.text)} /></div>
+        <div>B<AnnotatableText state={getStateFor(pageNum, 1, textB.text)} /></div>
       </div>
 
       <div>Which of these two has more detail about the...</div>
 
-      <table>
+      <table className="ratings-table">
         <thead><tr><th></th><th>A</th><th>B</th></tr></thead>
         <tbody>
           {attrs.map((attr, i) => <tr key={attr}>
@@ -113,12 +122,22 @@ export const App = observer(class App extends Component {
         </tbody>
       </table>
 
-      {pageNum === pages.length - 1
-        ? <button type="submit">Submit results</button>
-        : <button onClick={() => {this.setState({pageNum: pageNum+1});}}>Next</button>}
+      <div>
+        <button onClick={() => {this.setState({pageNum: pageNum - 1});}} disabled={pageNum===0}>Prev</button>
+        Comparison {pageNum + 1} of {pages.length}
+        {pageNum===pages.length - 1
+         ? <div>Last one! See below.</div>
+         : <button onClick={() => {this.setState({pageNum: pageNum+1});}}>Next</button>}
+      </div>
 
-      <input readOnly={true} value={JSON.stringify(allStates)} />
-      <input readOnly={true} value={JSON.stringify(ratings.data)} />
+      <input type="hidden" readOnly={true} value={JSON.stringify(allStates)} />
+      <input type="hidden" readOnly={true} value={JSON.stringify(ratings.data)} />
+
+      <div style={{display: pageNum === pages.length - 1 ? 'block' : 'none'}}>
+        <p>We&#39;re just developing this HIT, so we&#39;d appreciate your feedback: are the instructions clear? Is the payment fair? Did it feel too long or short? Any technical difficulties? Anything else?</p>
+        <textarea cols="80" name="feedback" placeholder="optional feedback" rows="4"></textarea>
+        <button type="submit" disabled={pageNum !== pages.length - 1}>Submit results</button>
+      </div>
     </div>;
   }
 });
