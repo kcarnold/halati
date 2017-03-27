@@ -115,7 +115,7 @@ export const App = observer(class App extends Component {
       <div>Which of these two has more detail about the...</div>
 
       <table className="ratings-table">
-        <thead><tr><th></th><th>A</th><th>neither</th><th>B</th></tr></thead>
+        <thead><tr><th></th><th>A</th><th>neither one does</th><th>B</th></tr></thead>
         <tbody>
           {attrs.map((attr, i) => <tr key={attr}>
             <td>{attr}</td>
