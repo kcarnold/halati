@@ -109,13 +109,18 @@ export const App = observer(class App extends Component {
     let stateB = getStateFor(pageNum, 1, textB.text);
 
     return <div className="App">
+      <div style={{background: 'yellow', boxShadow: '1px 1px 4px grey'}}>
       <h1>Instructions</h1>
       <ol>
         <li><b>Read</b> the two texts below. </li>
-        <li><b>Highlight</b> all <em>factual details</em> that each text gives by <b>selecting a few words with your mouse</b>. (Click any highlight to remove it.)</li>
+        <li><b>Highlight</b> all <em>factual details</em> that each text gives by <b>selecting words or phrases with your mouse</b>.
+        <ul>
+          <li>Click any highlight to remove it.</li>
+          <li>You can be sloppy with the highlights, like only selecting part of a word. It's mostly to help you.</li>
+        </ul></li>
         <li><b>Rate</b> the two reviews according to the rubric below.</li>
       </ol>
-
+      </div>
 
       <div className="reviews">
         <div>A<AnnotatableText state={stateA} /><HighlightReminder show={stateA.annotations.length === 0} /></div>
