@@ -95,7 +95,9 @@ export const App = observer(class App extends Component {
     let [textA, textB] = pages[pageNum];
 
     if (!consented) {
-      return <Consent onConsented={() => {this.setState({consented: true});}} />;
+      return <div style={{maxHeight: '100vh', overflow: 'scroll'}}>
+        <Consent onConsented={() => {this.setState({consented: true});}} />
+      </div>;
     }
 
     return <div className="App">
