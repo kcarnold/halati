@@ -85,6 +85,10 @@ class RatingOutput {
 let ratings = new RatingOutput();
 window.ratings = ratings;
 
+const HighlightReminder = ({show}) => (show
+  ? <div style={{color: 'red'}}>Remember to highlight any factual details you see in this writing (if any).</div>
+  : null);
+
 export const App = observer(class App extends Component {
   state = {pageNum: 0, consented: false};
 
@@ -100,6 +104,9 @@ export const App = observer(class App extends Component {
       </div>;
     }
 
+    let stateA = getStateFor(pageNum, 0, textA.text);
+    let stateB = getStateFor(pageNum, 1, textB.text);
+
     return <div className="App">
       <h1>Instructions</h1>
       <ol>
@@ -110,8 +117,8 @@ export const App = observer(class App extends Component {
 
 
       <div className="reviews">
-        <div>A<AnnotatableText state={getStateFor(pageNum, 0, textA.text)} /></div>
-        <div>B<AnnotatableText state={getStateFor(pageNum, 1, textB.text)} /></div>
+        <div>A<AnnotatableText state={stateA} /><HighlightReminder show={stateA.annotations.length === 0} /></div>
+        <div>B<AnnotatableText state={stateB} /><HighlightReminder show={stateB.annotations.length === 0} /></div>
       </div>
 
       <div>Which of these two has more detail about the...</div>
