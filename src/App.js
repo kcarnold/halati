@@ -99,9 +99,10 @@ export const App = observer(class App extends Component {
     let [textA, textB] = pages[pageNum];
 
     if (!consented) {
-      return <div style={{maxHeight: '100vh', overflow: 'scroll'}}>
-        <Consent onConsented={() => {this.setState({consented: true});}} />
-      </div>;
+      return <Consent onConsented={() => {
+          this.setState({consented: true});
+          setTimeout(() => {window.scrollTo(0, 0);}, 100);
+        }} />;
     }
 
     let stateA = getStateFor(pageNum, 0, textA.text);
