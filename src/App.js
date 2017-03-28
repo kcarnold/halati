@@ -89,39 +89,15 @@ const HighlightReminder = ({show}) => (show
   ? <div style={{color: 'red'}}>Remember to highlight any factual details you see in this writing (if any).</div>
   : null);
 
-export const App = observer(class App extends Component {
-  state = {pageNum: 0, consented: false};
-
+export const RatingPage = observer(class RatingPage extends Component {
   render() {
-    let {data} = this.props;
-    let {pages, attrs} = data;
-    let {pageNum, consented} = this.state;
-    let [textA, textB] = pages[pageNum];
-
-    if (!consented) {
-      return <Consent onConsented={() => {
-          this.setState({consented: true});
-          setTimeout(() => {window.scrollTo(0, 0);}, 100);
-        }} />;
-    }
-
+    let {pageNum, page, attrs} = this.props;
+    let [textA, textB] = page;
     let stateA = getStateFor(pageNum, 0, textA.text);
     let stateB = getStateFor(pageNum, 1, textB.text);
 
-    return <div className="App">
-      <div style={{background: 'yellow', boxShadow: '1px 1px 4px grey'}}>
-      <h1>Instructions</h1>
-      <ol>
-        <li><b>Read</b> the two texts below. </li>
-        <li><b>Highlight</b> all <em>factual details</em> that each text gives by <b>selecting words or phrases with your mouse</b>.
-        <ul>
-          <li>Click any highlight to remove it.</li>
-          <li>You can be sloppy with the highlights, like only selecting part of a word. It's mostly to help you.</li>
-        </ul></li>
-        <li><b>Rate</b> the two reviews according to the rubric below.</li>
-      </ol>
-      </div>
-
+    return <div className="RatingPage">
+      <h3>Page {pageNum+1}</h3>
       <div className="reviews">
         <div>A<AnnotatableText state={stateA} /><HighlightReminder show={stateA.annotations.length === 0} /></div>
         <div>B<AnnotatableText state={stateB} /><HighlightReminder show={stateB.annotations.length === 0} /></div>
@@ -157,23 +133,45 @@ export const App = observer(class App extends Component {
           </tr>
         </tbody>
       </table>
+    </div>;
+  }
+});
+
+export const App = observer(class App extends Component {
+  state = {consented: false};
+
+  render() {
+    let {data} = this.props;
+    let {pages, attrs} = data;
+    let {consented} = this.state;
+
+    if (!consented) {
+      return <Consent onConsented={() => {
+          this.setState({consented: true});
+          setTimeout(() => {window.scrollTo(0, 0);}, 100);
+        }} />;
+    }
+
+
+    return <div className="App">
+      <div style={{background: 'yellow', boxShadow: '1px 1px 4px grey'}}>
+      <h1>Instructions</h1>
+      <ol>
+        <li><b>Read</b> the two texts below. </li>
+        <li><b>Highlight</b> all <em>factual details</em> that each text gives by <b>selecting words or phrases with your mouse</b>.
+        <ul>
+          <li>Click any highlight to remove it.</li>
+          <li>You can be sloppy with the highlights, like only selecting part of a word. It's mostly to help you.</li>
+        </ul></li>
+        <li><b>Rate</b> the two reviews according to the rubric below.</li>
+      </ol>
+      </div>
+
+      {pages.map((page, pageNum) => <RatingPage key={pageNum} pageNum={pageNum} page={page} attrs={attrs} />)}
 
       <br/><br/>
 
-      <div>
-        <button onClick={(evt) => {this.setState({pageNum: pageNum - 1}); evt.preventDefault();}} disabled={pageNum===0}>Prev</button>
-        Comparison {pageNum + 1} of {pages.length}
-        {pageNum===pages.length - 1
-         ? <div>Last one! See below.</div>
-         : <button onClick={(evt) => {this.setState({pageNum: pageNum + 1}); evt.preventDefault();}}>Next</button>}
-      </div>
-
       <input type="hidden" readOnly={true} name="results" value={JSON.stringify({highlights: allStates, ratings: ratings.data})} />
-
-      <div style={{display: pageNum === pages.length - 1 ? 'block' : 'none'}}>
-        <p>We&#39;re just developing this HIT, so we&#39;d appreciate your feedback: are the instructions clear? Is the payment fair? Did it feel too long or short? Any technical difficulties? Anything else?</p>
-        <textarea cols="80" name="feedback" placeholder="optional feedback" rows="4"></textarea>
-      </div>
     </div>;
   }
 });
