@@ -88,7 +88,7 @@ let ratings = new RatingOutput();
 window.ratings = ratings;
 
 const HighlightReminder = ({show}) => (show
-  ? <div style={{color: 'red'}}>Remember to highlight any factual details you see in this writing (if any).</div>
+  ? <div style={{color: 'red'}}>Remember to highlight the details you see in this writing (if any).</div>
   : null);
 
 export const RatingPage = observer(class RatingPage extends Component {
@@ -164,8 +164,10 @@ export const App = observer(class App extends Component {
     return <div className="App">
       <div style={{background: 'yellow', boxShadow: '1px 1px 4px grey'}}>
       <h1>Instructions</h1>
+      <p><b>If you've done one of these before</b>, skim the texts to make sure you're not rating the same pair twice. If so, try another HIT from this group.</p>
+      <p>For each pair of texts below...</p>
       <ol>
-        <li><b>Read</b> the two texts below. </li>
+        <li><b>Read</b> the two texts.</li>
         <li><b>Highlight</b> all <em>details</em> that each text gives by <b>selecting words or phrases with your mouse</b>.
         <ul>
           <li><b>not a detail</b>: "I'll definitely be back!", "I come here all the time"</li>
@@ -174,7 +176,7 @@ export const App = observer(class App extends Component {
           <li>Click any highlight to remove it.</li>
           <li>You can be sloppy with the highlights, like only selecting part of a word, and highlighting something even if you're not sure how detailed it really is. It's mostly to help you.</li>
         </ul></li>
-        <li><b>Rate</b> the two reviews according to the rubric below.</li>
+        <li><b>Rate</b> the two reviews according to the rubric below. <b>Don't penalize a review for being cut off mid-sentence</b>.</li>
       </ol>
       An example of highlighting details:
       <div className="annotated-text" style={{width: '400px', margin: '5px'}}><span data-offset={0}>i came here the other day w</span><span data-offset={27} style={{background: 'rgb(204, 255, 0)'}}>ith my friend. w</span><span data-offset={43}>e got a s</span><span data-offset={52} style={{background: 'rgb(204, 255, 0)'}}>eat pretty qui</span><span data-offset={66}>ck. we both got a pa</span><span data-offset={86} style={{background: 'rgb(204, 255, 0)'}}>sta </span><span data-offset={90}>and a </span><span data-offset={96} style={{background: 'rgb(204, 255, 0)'}}>sala</span><span data-offset={100}>d. it was</span><span data-offset={109} style={{background: 'rgb(204, 255, 0)'}}>n't too loud f</span><span data-offset={123}>or a long conversation, and we di</span><span data-offset={156} style={{background: 'rgb(204, 255, 0)'}}>dn't feel rus</span><span data-offset={169}>hed. </span></div>
