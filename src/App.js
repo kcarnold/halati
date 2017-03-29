@@ -9,6 +9,8 @@ import {addFormatting} from './styledRanges';
 
 // var colors = d3.schemeCategory10; //['#8dd3c7','#ffffb3','#bebada','#fb8072','#80b1d3','#fdb462','#b3de69','#fccde5','#d9d9d9','#bc80bd']; // colorbrewer set3
 
+let flips = [];
+for (let i=0; i<100; i++) flips.push(Math.random() < .5);
 
 export class State {
   constructor(text) {
@@ -93,8 +95,14 @@ export const RatingPage = observer(class RatingPage extends Component {
   render() {
     let {pageNum, page, attrs} = this.props;
     let [textA, textB] = page;
+    let flipped = flips[pageNum];
     let stateA = getStateFor(pageNum, 0, textA.text);
     let stateB = getStateFor(pageNum, 1, textB.text);
+    let internalName = {A: 'A', B: 'B', same: 'same'};
+    if (flipped) {
+      [stateA, stateB] = [stateB, stateA];
+      internalName = {A: 'B', B: 'A', same: 'same'};
+    }
 
     return <div className="RatingPage">
       <h3>Page {pageNum+1}</h3>
@@ -106,29 +114,29 @@ export const RatingPage = observer(class RatingPage extends Component {
       <div>Which of these two has more detail about the...</div>
 
       <table className="ratings-table">
-        <thead><tr><th></th><th>A</th><th>neither one does</th><th>B</th></tr></thead>
+        <thead><tr><th></th><th>A</th><th>same</th><th>B</th></tr></thead>
         <tbody>
           {attrs.map((attr, i) => <tr key={attr}>
             <td>{attr}</td>
-            {['A', 'neither', 'B'].map(x => <td key={x}>
+            {['A', 'same', 'B'].map(x => <td key={x}>
               <input type="radio"
-                checked={ratings.data.get(`${attr}-${pageNum}`) === x}
-                onChange={() => {console.log(attr, x); ratings.data.set(`${attr}-${pageNum}`, x);}} />
+                checked={ratings.data.get(`${attr}-${pageNum}`) === internalName[x]}
+                onChange={() => {console.log(pageNum, attr, x, internalName[x]); ratings.data.set(`${attr}-${pageNum}`, internalName[x]);}} />
             </td>)}</tr>)}
           <tr><td colSpan="4"><br/>Which is better written?</td></tr>
           <tr><td></td>
             {['A', null, 'B'].map(x => <td key={x+''}>
               {x && <input type="radio"
-                checked={ratings.data.get(`written-${pageNum}`) === x}
-                onChange={() => {console.log('written', x); ratings.data.set(`written-${pageNum}`, x);}} />}
+                checked={ratings.data.get(`written-${pageNum}`) === internalName[x]}
+                onChange={() => {console.log(pageNum, 'written', x, internalName[x]); ratings.data.set(`written-${pageNum}`, internalName[x]);}} />}
             </td>)}
           </tr>
           <tr><td colSpan="4"><br/>Which is higher quality overall?</td></tr>
           <tr><td></td>
             {['A', null, 'B'].map(x => <td key={x+''}>
               {x && <input type="radio"
-                checked={ratings.data.get(`overall-${pageNum}`) === x}
-                onChange={() => {console.log('overall', x); ratings.data.set(`overall-${pageNum}`, x);}} />}
+                checked={ratings.data.get(`overall-${pageNum}`) === internalName[x]}
+                onChange={() => {console.log(pageNum, 'overall', x, internalName[x]); ratings.data.set(`overall-${pageNum}`, internalName[x]);}} />}
             </td>)}
           </tr>
         </tbody>
