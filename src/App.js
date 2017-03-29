@@ -166,8 +166,11 @@ export const App = observer(class App extends Component {
       <h1>Instructions</h1>
       <ol>
         <li><b>Read</b> the two texts below. </li>
-        <li><b>Highlight</b> all <em>factual details</em> that each text gives by <b>selecting words or phrases with your mouse</b>.
+        <li><b>Highlight</b> all <em>details</em> that each text gives by <b>selecting words or phrases with your mouse</b>.
         <ul>
+          <li><b>not a detail</b>: "I'll definitely be back!", "I come here all the time"</li>
+          <li><b>a mediocre detail</b>: "The service was pretty fast", "My favorite dish is the veggie burger" (at least it tells you they serve veggie burgers)</li>
+          <li><b>a better detail</b>: "The concrete walls felt cold.", "We waited 15 minutes for a seat."</li>
           <li>Click any highlight to remove it.</li>
           <li>You can be sloppy with the highlights, like only selecting part of a word. It's mostly to help you.</li>
         </ul></li>
