@@ -172,10 +172,12 @@ export const App = observer(class App extends Component {
           <li><b>a mediocre detail</b>: "The service was pretty fast", "My favorite dish is the veggie burger" (at least it tells you they serve veggie burgers)</li>
           <li><b>a better detail</b>: "The concrete walls felt cold.", "We waited 15 minutes for a seat."</li>
           <li>Click any highlight to remove it.</li>
-          <li>You can be sloppy with the highlights, like only selecting part of a word. It's mostly to help you.</li>
+          <li>You can be sloppy with the highlights, like only selecting part of a word, and highlighting something even if you're not sure how detailed it really is. It's mostly to help you.</li>
         </ul></li>
         <li><b>Rate</b> the two reviews according to the rubric below.</li>
       </ol>
+      An example of highlighting details:
+      <div className="annotated-text" style={{width: '400px', margin: '5px'}}><span data-offset={0}>i came here the other day w</span><span data-offset={27} style={{background: 'rgb(204, 255, 0)'}}>ith my friend. w</span><span data-offset={43}>e got a s</span><span data-offset={52} style={{background: 'rgb(204, 255, 0)'}}>eat pretty qui</span><span data-offset={66}>ck. we both got a pa</span><span data-offset={86} style={{background: 'rgb(204, 255, 0)'}}>sta </span><span data-offset={90}>and a </span><span data-offset={96} style={{background: 'rgb(204, 255, 0)'}}>sala</span><span data-offset={100}>d. it was</span><span data-offset={109} style={{background: 'rgb(204, 255, 0)'}}>n't too loud f</span><span data-offset={123}>or a long conversation, and we di</span><span data-offset={156} style={{background: 'rgb(204, 255, 0)'}}>dn't feel rus</span><span data-offset={169}>hed. </span></div>
       </div>
 
       {pages.map((page, pageNum) => <RatingPage key={pageNum} pageNum={pageNum} page={page} attrs={attrs} />)}
