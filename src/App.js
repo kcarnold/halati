@@ -91,6 +91,14 @@ const HighlightReminder = ({show}) => (show
   ? <div style={{color: 'red'}}>Remember to highlight the details you see in this writing (if any).</div>
   : null);
 
+function responseOptions(attr, pageNum, opts, internalName) {
+  return opts.map(x => <td key={x}>
+    {x && <input type="radio"
+        checked={ratings.data.get(`${attr}-${pageNum}`) === internalName[x]}
+        onChange={() => {console.log(pageNum, attr, x, internalName[x]); ratings.data.set(`${attr}-${pageNum}`, internalName[x]);}} />
+    }</td>);
+}
+
 export const RatingPage = observer(class RatingPage extends Component {
   render() {
     let {pageNum, page, attrs} = this.props;
@@ -117,27 +125,14 @@ export const RatingPage = observer(class RatingPage extends Component {
         <thead><tr><th></th><th>A</th><th>same</th><th>B</th></tr></thead>
         <tbody>
           {attrs.map((attr, i) => <tr key={attr}>
-            <td>{attr}</td>
-            {['A', 'same', 'B'].map(x => <td key={x}>
-              <input type="radio"
-                checked={ratings.data.get(`${attr}-${pageNum}`) === internalName[x]}
-                onChange={() => {console.log(pageNum, attr, x, internalName[x]); ratings.data.set(`${attr}-${pageNum}`, internalName[x]);}} />
-            </td>)}</tr>)}
+            <td>{attr}</td>{responseOptions(attr, pageNum, ['A', 'same', 'B'], internalName)}
+          </tr>)}
           <tr><td colSpan="4"><br/>Which is better written?</td></tr>
           <tr><td></td>
-            {['A', null, 'B'].map(x => <td key={x+''}>
-              {x && <input type="radio"
-                checked={ratings.data.get(`written-${pageNum}`) === internalName[x]}
-                onChange={() => {console.log(pageNum, 'written', x, internalName[x]); ratings.data.set(`written-${pageNum}`, internalName[x]);}} />}
-            </td>)}
+            {responseOptions('written', pageNum, ['A', null, 'B'], internalName)}
           </tr>
           <tr><td colSpan="4"><br/>Which is higher quality overall?</td></tr>
-          <tr><td></td>
-            {['A', null, 'B'].map(x => <td key={x+''}>
-              {x && <input type="radio"
-                checked={ratings.data.get(`overall-${pageNum}`) === internalName[x]}
-                onChange={() => {console.log(pageNum, 'overall', x, internalName[x]); ratings.data.set(`overall-${pageNum}`, internalName[x]);}} />}
-            </td>)}
+          <tr><td></td>{responseOptions('overall', pageNum, ['A', null, 'B'], internalName)}
           </tr>
         </tbody>
       </table>
