@@ -124,15 +124,19 @@ export const RatingPage = observer(class RatingPage extends Component {
       <table className="ratings-table">
         <thead><tr><th></th><th>A</th><th>same</th><th>B</th></tr></thead>
         <tbody>
-          {attrs.map((attr, i) => <tr key={attr}>
+          {attrs.map((attr, i) => <tr key={attr} style={{background: ratings.data.has(`${attr}-${pageNum}`) ? 'none' : '#f3cbcb'}}>
             <td>{attr}</td>{responseOptions(attr, pageNum, ['A', 'same', 'B'], internalName)}
           </tr>)}
+          <tr><td colSpan="4"><br/>Which is more detailed overall?</td></tr>
+          <tr style={{background: ratings.data.has(`detailed-${pageNum}`) ? 'none' : '#f3cbcb'}}><td></td>
+            {responseOptions('detailed', pageNum, ['A', null, 'B'], internalName)}
+          </tr>
           <tr><td colSpan="4"><br/>Which is better written?</td></tr>
-          <tr><td></td>
+          <tr style={{background: ratings.data.has(`written-${pageNum}`) ? 'none' : '#f3cbcb'}}><td></td>
             {responseOptions('written', pageNum, ['A', null, 'B'], internalName)}
           </tr>
           <tr><td colSpan="4"><br/>Which is higher quality overall?</td></tr>
-          <tr><td></td>{responseOptions('overall', pageNum, ['A', null, 'B'], internalName)}
+          <tr style={{background: ratings.data.has(`quality-${pageNum}`) ? 'none' : '#f3cbcb'}}><td></td>{responseOptions('quality', pageNum, ['A', null, 'B'], internalName)}
           </tr>
         </tbody>
       </table>
@@ -157,7 +161,7 @@ export const App = observer(class App extends Component {
 
 
     return <div className="App">
-      <div style={{background: 'yellow', boxShadow: '1px 1px 4px grey'}}>
+      <div style={{background: 'yellow', boxShadow: '1px 1px 4px grey', padding: '5px'}}>
       <h1>Instructions</h1>
       <p><b>If you've done one of these before</b>, skim the texts to make sure you're not rating the same pair twice. If so, try another HIT from this group.</p>
       <p>For each pair of texts below...</p>

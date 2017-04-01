@@ -1,3 +1,7 @@
+.App {
+  padding: 5px;
+}
+
 .annotated-text {
   line-height: 1.5;
   background: #eee;
