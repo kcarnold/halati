@@ -17,23 +17,19 @@ span.curAnnoText {
 }
 
 
-.reviews {
+.tools button.cur {
+  background: black;
+  color: white;
+}
+
+.TextBlocks {
   display: flex;
-  flex-flow: row;
-  width: 80%;
+  flex-flow: row wrap;
 }
 
-.reviews > div {
-  flex: 1 0 0;
-  margin: 15px;
-}
-
-.ratings-table th, .ratings-table td {
-  width: 70px;
-  text-align: center;
-}
-
-
-td:first-child {
-    text-align: left;
+.TextBlock {
+  display: flex;
+  flex-flow: row nowrap;
+  width: 400px;
+  padding: 10px;
 }

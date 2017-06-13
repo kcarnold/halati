@@ -9,17 +9,53 @@ import {addFormatting} from './styledRanges';
 
 // var colors = d3.schemeCategory10; //['#8dd3c7','#ffffb3','#bebada','#fb8072','#80b1d3','#fdb462','#b3de69','#fccde5','#d9d9d9','#bc80bd']; // colorbrewer set3
 
-let flips = [];
-for (let i=0; i<100; i++) flips.push(Math.random() < .5);
-
 export class State {
   constructor(text) {
     M.extendObservable(this, {
       text: text,
       annotations: [],
+      curTool: 'pos'
     });
   }
 }
+
+function toolColor(tool) {
+  return {
+    pos: '#ccff00',
+    neg: 'red',
+    fact: null
+  }[tool];
+}
+
+
+function simplifyAnnotations(text, annotations) {
+  let annotated = [{text, style: {}}];
+  function joinStyle(prev, cur) {
+    return {...prev, ...cur}; // let the later annotation override.
+  }
+  annotations.forEach((annotation) => {
+    let {range, tool} = annotation;
+    let [start, end] = range;
+    annotated = addFormatting(annotated, start, end, {tool}, joinStyle);
+  });
+  let simplified = [], offset = 0;
+  annotated.forEach(({text, style}) => {
+    let {tool} = style;
+    let thisEnd = offset + text.length;
+    if (tool && tool !== 'fact') {
+      if (simplified.length && simplified[simplified.length - 1].tool === tool && simplified[simplified.length-1].range[1] === offset) {
+        // just merge.
+        simplified[simplified.length-1].range[1] = thisEnd;
+      } else {
+        simplified.push({range: [offset, thisEnd], tool: tool});
+      }
+    }
+    offset += text.length;
+  });
+  return simplified;
+}
+
+let interlockClick = 0;
 
 export const AnnotatableText = observer(class AnnotatableText extends Component {
   onMouseUp = (evt) => {
@@ -28,11 +64,14 @@ export const AnnotatableText = observer(class AnnotatableText extends Component 
     var startTextOffset = +range.startContainer.parentNode.getAttribute('data-offset') + range.startOffset;
     var endTextOffset = +range.endContainer.parentNode.getAttribute('data-offset') + range.endOffset;
     if (startTextOffset === endTextOffset) return;
-    state.annotations.push({range: [startTextOffset, endTextOffset]});
+    state.annotations.push({range: [startTextOffset, endTextOffset], tool: state.curTool});
+    state.annotations = simplifyAnnotations(state.text, state.annotations);
     window.getSelection().removeAllRanges();
+    interlockClick = +new Date();
   };
 
   onClickAnnotation(annotations) {
+    if (+new Date() - interlockClick < 100) return;
     if (!annotations)
       return;
     let {state} = this.props;
@@ -46,9 +85,6 @@ export const AnnotatableText = observer(class AnnotatableText extends Component 
     var annotated = [{text: state.text, style: {}}];
     function joinStyle(prev, cur) {
       let res = {...prev, ...cur};
-      if (prev.color && cur.color) {
-        res.color = d3.interpolateCubehelix(prev.color, cur.color)(.5);
-      }
       if (prev.annotations && cur.annotations) {
         res.annotations = prev.annotations.concat(cur.annotations);
       }
@@ -56,8 +92,10 @@ export const AnnotatableText = observer(class AnnotatableText extends Component 
     }
     state.annotations.forEach(function(annotation, i) {
         let [start, end] = annotation.range;
-        annotated = addFormatting(annotated, start, end, {color: '#ccff00', annotations: [annotation]}, joinStyle);
+        let {tool} = annotation;
+        annotated = addFormatting(annotated, start, end, {color: toolColor(tool), annotations: [annotation]}, joinStyle);
       });
+    // if (state.annotations.length > 0) debugger
     let offset = 0;
     return <div className="annotated-text" onMouseUp={this.onMouseUp}>{
       annotated.map(({text, style}, i) => <span
@@ -68,88 +106,35 @@ export const AnnotatableText = observer(class AnnotatableText extends Component 
   }
 });
 
-let allStates = M.observable({});
-function getStateFor(page, which, text) {
-  let name = `${page}-${which}`;
-  if (!allStates[name])
-    allStates[name] = new State(text);
-  return allStates[name];
+let allStates = M.observable([]);
+
+export const init = data => {
+  data.forEach(datum => {
+    allStates.push(new State(datum.finalText));
+  });
 }
 
-class RatingOutput {
-  constructor() {
-    M.extendObservable(this, {
-      data: new M.ObservableMap(),
-    });
-  }
-}
-
-let ratings = new RatingOutput();
-window.ratings = ratings;
-
-const HighlightReminder = ({show}) => (show
-  ? <div style={{color: 'red'}}>Remember to highlight the details you see in this writing (if any).</div>
-  : null);
-
-function responseOptions(attr, pageNum, opts, internalName) {
-  return opts.map(x => <td key={x}>
-    {x && <input type="radio"
-        checked={ratings.data.get(`${attr}-${pageNum}`) === internalName[x]}
-        onChange={() => {console.log(pageNum, attr, x, internalName[x]); ratings.data.set(`${attr}-${pageNum}`, internalName[x]);}} />
-    }</td>);
-}
-
-export const RatingPage = observer(class RatingPage extends Component {
+const Annotator = observer(class Annotator extends Component {
   render() {
-    let {pageNum, page, attrs} = this.props;
-    let [textA, textB] = page;
-    let flipped = flips[pageNum];
-    let stateA = getStateFor(pageNum, 0, textA.text);
-    let stateB = getStateFor(pageNum, 1, textB.text);
-    let internalName = {A: 'A', B: 'B', same: 'same'};
-    if (flipped) {
-      [stateA, stateB] = [stateB, stateA];
-      internalName = {A: 'B', B: 'A', same: 'same'};
-    }
-
-    return <div className="RatingPage">
-      <h3>Page {pageNum+1}</h3>
-      <div className="reviews">
-        <div>A<AnnotatableText state={stateA} /><HighlightReminder show={stateA.annotations.length === 0} /></div>
-        <div>B<AnnotatableText state={stateB} /><HighlightReminder show={stateB.annotations.length === 0} /></div>
-      </div>
-
-      <div>Which of these two has more detail about the...</div>
-
-      <table className="ratings-table">
-        <thead><tr><th></th><th>A</th><th>same</th><th>B</th></tr></thead>
-        <tbody>
-          {attrs.map((attr, i) => <tr key={attr} style={{background: ratings.data.has(`${attr}-${pageNum}`) ? 'none' : '#f3cbcb'}}>
-            <td>{attr}</td>{responseOptions(attr, pageNum, ['A', 'same', 'B'], internalName)}
-          </tr>)}
-          <tr><td colSpan="4"><br/>Which is more detailed overall?</td></tr>
-          <tr style={{background: ratings.data.has(`detailed-${pageNum}`) ? 'none' : '#f3cbcb'}}><td></td>
-            {responseOptions('detailed', pageNum, ['A', null, 'B'], internalName)}
-          </tr>
-          <tr><td colSpan="4"><br/>Which is better written?</td></tr>
-          <tr style={{background: ratings.data.has(`written-${pageNum}`) ? 'none' : '#f3cbcb'}}><td></td>
-            {responseOptions('written', pageNum, ['A', null, 'B'], internalName)}
-          </tr>
-          <tr><td colSpan="4"><br/>Which is higher quality overall?</td></tr>
-          <tr style={{background: ratings.data.has(`quality-${pageNum}`) ? 'none' : '#f3cbcb'}}><td></td>{responseOptions('quality', pageNum, ['A', null, 'B'], internalName)}
-          </tr>
-        </tbody>
-      </table>
+    let {idx} = this.props;
+    let state = allStates[idx];
+    return <div className="TextBlock">
+      <div className="tools">{['pos', 'neg', 'fact'].map(tool =>
+        <button
+          key={tool} className={tool === state.curTool ? 'cur' : ''}
+          onClick={evt => {state.curTool = tool;}}
+        >{tool}</button>)}</div>
+      <AnnotatableText state={state} />
     </div>;
   }
 });
 
+
 export const App = observer(class App extends Component {
-  state = {consented: false};
+  state = {consented: true};
 
   render() {
     let {data} = this.props;
-    let {pages, attrs} = data;
     let {consented} = this.state;
 
     if (!consented) {
@@ -163,31 +148,17 @@ export const App = observer(class App extends Component {
     return <div className="App">
       <div style={{background: 'yellow', boxShadow: '1px 1px 4px grey', padding: '5px'}}>
       <h1>Instructions</h1>
-      <p><b>If you've done one of these before</b>, skim the texts to make sure you're not rating the same pair twice. If so, try another HIT from this group.</p>
-      <p>For each pair of texts below...</p>
-      <ol>
-        <li><b>Read</b> the two texts.</li>
-        <li><b>Highlight</b> all <em>details</em> that each text gives by <b>selecting words or phrases with your mouse</b>.
-        <ul>
-          <li><b>not a detail</b>: "I'll definitely be back!", "I come here all the time"</li>
-          <li><b>a mediocre detail</b>: "The service was pretty fast", "My favorite dish is the veggie burger" (at least it tells you they serve veggie burgers)</li>
-          <li><b>a better detail</b>: "The concrete walls felt cold.", "We waited 15 minutes for a seat."</li>
-          <li>Click any highlight to remove it.</li>
-          <li>You can be sloppy with the highlights, like only selecting part of a word, and highlighting something even if you're not sure how detailed it really is. It's mostly to help you.</li>
-        </ul></li>
-        <li><b>Rate</b> the two reviews according to the rubric below. <b>Don't penalize a review for being cut off mid-sentence</b>.</li>
-      </ol>
-      An example of highlighting details:
-      <div className="annotated-text" style={{width: '400px', margin: '5px'}}><span data-offset={0}>i came here the other day w</span><span data-offset={27} style={{background: 'rgb(204, 255, 0)'}}>ith my friend. w</span><span data-offset={43}>e got a s</span><span data-offset={52} style={{background: 'rgb(204, 255, 0)'}}>eat pretty qui</span><span data-offset={66}>ck. we both got a pa</span><span data-offset={86} style={{background: 'rgb(204, 255, 0)'}}>sta </span><span data-offset={90}>and a </span><span data-offset={96} style={{background: 'rgb(204, 255, 0)'}}>sala</span><span data-offset={100}>d. it was</span><span data-offset={109} style={{background: 'rgb(204, 255, 0)'}}>n't too loud f</span><span data-offset={123}>or a long conversation, and we di</span><span data-offset={156} style={{background: 'rgb(204, 255, 0)'}}>dn't feel rus</span><span data-offset={169}>hed. </span></div>
+      <p><b>If you've done one of these before</b>, skim the texts to make sure you're not rating the same text twice. If so, try another HIT from this group.</p>
       </div>
 
-      {pages.map((page, pageNum) => <RatingPage key={pageNum} pageNum={pageNum} page={page} attrs={attrs} />)}
+      <div className="TextBlocks">{data.map((datum, idx) => <Annotator key={idx} idx={idx} datum={datum} />)}</div>
 
       <br/><br/>
 
-      <input type="hidden" readOnly={true} name="results" value={JSON.stringify({highlights: allStates, ratings: ratings.data})} />
+      <input type="hidden" readOnly={true} name="results" value={JSON.stringify({allStates})} />
     </div>;
   }
 });
 
 export default App;
+window.allStates = allStates;
