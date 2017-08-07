@@ -1,11 +1,12 @@
 import React, { Component } from 'react';
 import M from 'mobx';
 import {observer} from 'mobx-react';
-const d3 = require('d3');//import d3 from 'd3';
-window.d3 = d3;
-
 import Consent from './Consent';
 import {addFormatting} from './styledRanges';
+
+// const d3 = require('d3');//import d3 from 'd3';
+// window.d3 = d3;
+
 
 // var colors = d3.schemeCategory10; //['#8dd3c7','#ffffb3','#bebada','#fb8072','#80b1d3','#fdb462','#b3de69','#fccde5','#d9d9d9','#bc80bd']; // colorbrewer set3
 
